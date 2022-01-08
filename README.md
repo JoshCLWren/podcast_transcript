@@ -13,3 +13,5 @@ convert an mp3 to a wav file using mp3_to_wav.py
 
 run trans.py to transcribe the audio to text.
 
+Forked from:
+`https://medium.com/@garcjes/transcribe-a-podcast-in-python-with-vosk-api-35eba7d96c1f`
