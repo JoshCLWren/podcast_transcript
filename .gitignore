@@ -1,0 +1,10 @@
+__pycache__
+tmp
+.python_version
+.venv
+.vscode
+.vscode-test
+.vscode-test-python
+/vosk-model-en-us-0.22
+*.txt
+*.wav
