@@ -25,11 +25,13 @@ pycparser==2.21
 pydub==0.25.1
 Pygments==2.11.2
 pyrepl==0.9.0
+PyYAML==6.0
 sgmllib3k==1.0.0
 SpeechRecognition==3.8.1
 tomli==1.2.3
 typing_extensions==4.0.1
 vosk==0.3.32
+watchdog==2.1.6
 Wave==0.0.2
 wmctrl==0.4
 yarl==1.7.2

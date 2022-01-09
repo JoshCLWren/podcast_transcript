@@ -1,23 +1,23 @@
 import mp3_to_wav
 import transcriber
+import database
 import feedparser
 
 
-feed = feedparser.parse("http://www.5minutehistory.com/feed/podcast/")
-
-
-def feed_transcriber(feed):
+async def feed_transcriber(feed_url):
     """Transcribes an entire rss feed of a podcast."""
-    for item in feed.entries:
-        import pdb
+    feed = feedparser.parse(feed_url)
 
-        # pdb.set_trace()
+    for item in feed.entries:
         try:
-            podcast_episode = {
+
+            episode = {
                 "audio_url": item.links[1].href,
-                "title": item.title,
+                "podcast_title": feed["feed"]["title"],
+                "episode_title": item.title,
+                "rss_url": feed_url,
             }
-            print(podcast_episode)
+
         except IndexError:
             # some rare early episodes have different indexing or no link to an mp3 and for the purpose of this script we will skip such episodes
             print(
@@ -27,7 +27,7 @@ def feed_transcriber(feed):
 
         try:
             wav_file = mp3_to_wav.wav_converter(
-                podcast_episode["audio_url"], podcast_episode["title"]
+                episode["audio_url"], episode["podcast_title"]
             )
         except Exception as e:
             print(e)
@@ -37,13 +37,32 @@ def feed_transcriber(feed):
 
             transcript_output = transcriber.get_large_audio_transcription(wav_file)
 
-            text_transcript = open(
-                f"5minutehistory/{podcast_episode['title']}_sr.txt", "w"
-            )
-
-            text_transcript.write(transcript_output)
-            text_transcript.close()
+            episode["transcript"] = transcript_output
+            await database.insert_transcript(**episode)
         except Exception as e:
             print(e)
 
             continue
+
+
+async def episode_transcriber(**episode):
+    """Transcribes a single episode of a podcast."""
+    import pdb
+
+    pdb.set_trace()
+    try:
+        wav_file = mp3_to_wav.wav_converter(
+            episode["audio_url"], episode["episode_title"]
+        )
+    except Exception as e:
+        print(e)
+        return
+
+    try:
+        transcript_output = transcriber.get_large_audio_transcription(wav_file)
+        episode["transcript"] = transcript_output
+        await database.insert_transcript(**episode)
+    except Exception as e:
+        print(e)
+
+        return

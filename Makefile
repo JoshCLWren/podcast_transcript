@@ -9,3 +9,16 @@ venv:
 deps-install:
 	python -m pip install --upgrade pip
 	pip install --upgrade -r requirements.txt
+
+compile:
+	pip freeze > requirements.txt
+
+server:
+	watchmedo auto-restart -p "*.py" -R python -- app.py
+
+update:
+	pip freeze > requirements.txt
+	make install
+
+heroku:
+	heroku local

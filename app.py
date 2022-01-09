@@ -4,6 +4,7 @@ from aiohttp import web
 import os
 from aiohttp_middlewares import cors_middleware
 import database
+import podcast_transcripter
 
 
 cors_rules = cors_middleware(origins=[re.compile(r"(localhost(:[\d]+))?")])
@@ -26,7 +27,7 @@ async def index(request):
 
 async def get_transcripts(request):
     try:
-        return web.json_response(await database.get_transcript())
+        return web.json_response(await database.get_transcripts())
     except Exception as e:
         return web.json_response(
             {"status": "failure", "error": str(e), "type": f"{type(e)}"}
@@ -39,9 +40,24 @@ async def create_transcript(request):
     try:
         body = await request.json()
         return web.json_response(
-            await database.insert_transcript(
+            await podcast_transcripter.episode_transcriber(
                 **body,
             )
+        )
+    except Exception as e:
+
+        return web.json_response(
+            {"status": "failure", "error": str(e), "type": f"{type(e)}"}
+        )
+
+
+async def create_feed_transcript(request):
+    if request.headers.get("api-key") != api_key:
+        raise web.HTTPUnauthorized()
+    try:
+        body = await request.json()
+        return web.json_response(
+            await podcast_transcripter.feed_transcriber(feed_url=body["feed_url"])
         )
     except Exception as e:
 
@@ -53,14 +69,9 @@ async def create_transcript(request):
 async def delete_transcript(request):
     if request.headers.get("api-key") != api_key:
         raise web.HTTPUnauthorized()
-    try:
-        _id = request.match_info["id"]
-        await database.delete_transcript(_id)
-        raise web.HTTPNoContent()
-    except Exception as e:
-        return web.json_response(
-            {"status": "failure", "error": str(e), "type": f"{type(e)}"}
-        )
+    _id = request.match_info["id"]
+    await database.delete_transcript(_id)
+    raise web.HTTPNoContent()
 
 
 async def update_transcript(request):
@@ -69,6 +80,7 @@ async def update_transcript(request):
     try:
         _id = request.match_info["id"]
         body = await request.json()
+        body["id"] = _id
         return web.json_response(
             await database.update_transcript(
                 **body,
@@ -120,21 +132,14 @@ async def seed_transcript(request):
     try:
         for _ in range(body["transcript_count"]):
             fake_transcript = {
-                "name": fake.name(),
-                "description": fake.text(),
-                "bit_value": randint(1, 100),
-                "channel_point_value": randint(1, 100),
-                "description": fake.text(),
-                "image_url": f"{fake.url()}/.jpg",
-                "custom_message": fake.text(),
+                "podcast_title": "Fake Podcast",
+                "episode_title": "Fake Episode",
+                "rss_url": "https://fake.com",
+                "transcript": "Fake transcript",
+                "audio_url": "https://fake.com",
             }
             await database.insert_transcript(
-                name=fake_transcript["name"],
-                description=fake_transcript["description"],
-                bit_value=fake_transcript["bit_value"],
-                channel_point_value=fake_transcript["channel_point_value"],
-                image_url=fake_transcript["image_url"],
-                custom_message=fake_transcript["custom_message"],
+                **fake_transcript,
             )
         return web.json_response(
             {"status": "success", "transcript_count": body["transcript_count"]}
@@ -148,14 +153,15 @@ async def seed_transcript(request):
 app.add_routes(
     [
         web.get("/", index),
-        web.get("/transcript", get_transcripts),
-        web.post("/transcript", create_transcript),
-        web.delete("/transcript/{id}", delete_transcript),
-        web.put("/transcript/{id}", update_transcript),
-        web.get("/transcript/{id}", get_transcript_resource),
-        web.post("/transcript:create_table", create_transcript_table),
-        web.delete("/transcript:drop_table", drop_transcript_table),
-        web.post("/transcript:seed", seed_transcript),
+        web.post("/transcripts/-/feed", create_feed_transcript),
+        web.get("/transcripts", get_transcripts),
+        web.post("/transcripts", create_transcript),
+        web.delete("/transcripts/{id}", delete_transcript),
+        web.put("/transcripts/{id}", update_transcript),
+        web.get("/transcripts/{id}", get_transcript_resource),
+        web.post("/transcripts:create_table", create_transcript_table),
+        web.delete("/transcripts:drop_table", drop_transcript_table),
+        web.post("/transcripts:seed", seed_transcript),
     ]
 )
 
