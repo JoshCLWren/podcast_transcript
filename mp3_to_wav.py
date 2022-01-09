@@ -4,12 +4,16 @@ import pdb
 from pydub.playback import play
 
 
-url = "https://traffic.libsyn.com/secure/5minutehistory/The_History_of_London.mp3"
-output_file = "/tmp/The_History_of_London.mp3"
-urllib.request.urlretrieve(url, output_file)
-song = pydub.AudioSegment.from_mp3(output_file)
+def wav_converter(url, podcast_title):
+    """
+    Converts an mp3 file to a mono wav file.
+    """
 
-wav_file = "The_History_of_London.wav"
-song = song.set_channels(1)
-song = song.set_frame_rate(16000)
-song.export(wav_file, format="wav")
+    output_file = f"/tmp/{podcast_title}.mp3"
+    urllib.request.urlretrieve(url, output_file)
+    song = pydub.AudioSegment.from_mp3(output_file)
+
+    wav_file = f"{podcast_title}.wav"
+    song = song.set_channels(1)
+    song = song.set_frame_rate(16000)
+    return song.export(wav_file, format="wav")

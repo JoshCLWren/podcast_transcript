@@ -8,3 +8,5 @@ tmp
 /vosk-model-en-us-0.22
 *.txt
 *.wav
+audio-chunks
+.envrc
