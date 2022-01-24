@@ -4,6 +4,7 @@ import speech_recognition as sr
 import os
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
+import shutil
 
 # create a speech recognition object
 r = sr.Recognizer()
@@ -27,7 +28,7 @@ def get_large_audio_transcription(path):
         # keep the silence for 1 second, adjustable as well
         keep_silence=500,
     )
-    folder_name = "audio-chunks"
+    folder_name = f"{path.name}-audio-chunks"
     # create a directory to store the audio chunks
     if not os.path.isdir(folder_name):
         os.mkdir(folder_name)
@@ -46,8 +47,10 @@ def get_large_audio_transcription(path):
                 text = r.recognize_google(audio_listened)
             except sr.UnknownValueError as e:
                 print("Error:", str(e))
+                continue
             else:
                 text = f"{text.capitalize()}. \n"
                 whole_text += text
     # return the text for all chunks detected
+    shutil.rmtree(folder_name)
     return whole_text

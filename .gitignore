@@ -10,3 +10,4 @@ tmp
 *.wav
 audio-chunks
 .envrc
+*-chunks

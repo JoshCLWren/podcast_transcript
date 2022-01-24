@@ -47,9 +47,7 @@ async def feed_transcriber(feed_url):
 
 async def episode_transcriber(**episode):
     """Transcribes a single episode of a podcast."""
-    import pdb
 
-    pdb.set_trace()
     try:
         wav_file = mp3_to_wav.wav_converter(
             episode["audio_url"], episode["episode_title"]
