@@ -57,9 +57,9 @@ async def episode_transcriber(**episode):
         return
 
     try:
-        transcript_output = transcriber.get_large_audio_transcription(wav_file)
-        episode["transcript"] = transcript_output
-        await database.insert_transcript(**episode)
+        episode["path"] = wav_file
+        return await transcriber.get_large_audio_transcription(**episode)
+
     except Exception as e:
         print(e)
 

@@ -39,11 +39,13 @@ async def create_transcript(request):
         raise web.HTTPUnauthorized()
     try:
         body = await request.json()
-        return web.json_response(
-            await podcast_transcripter.episode_transcriber(
-                **body,
-            )
+
+        time = await podcast_transcripter.episode_transcriber(
+            **body,
         )
+
+        return web.json_response({"status": "success", "time": time})
+
     except Exception as e:
 
         return web.json_response(
