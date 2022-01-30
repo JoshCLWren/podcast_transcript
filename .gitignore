@@ -12,3 +12,4 @@ audio-chunks
 .envrc
 *-chunks
 app.yaml
+dump.rdb

@@ -9,7 +9,7 @@ from utils import _count_words_at_url
 q = Queue(connection=conn)
 
 
-async def feed_transcriber(feed_url):
+def feed_transcriber(feed_url):
     """Transcribes an entire rss feed of a podcast."""
     feed = feedparser.parse(feed_url)
 
@@ -39,7 +39,8 @@ async def feed_transcriber(feed_url):
             continue
 
         try:
-            q.enqueue(transcriber.get_large_audio_transcription, wav_file, **episode)
+            episode["path"] = wav_file
+            transcriber.get_large_audio_transcription(**episode)
 
         except Exception as e:
             print(e)
@@ -60,7 +61,7 @@ def episode_transcriber(**episode):
 
     try:
         episode["path"] = wav_file
-        return transcriber.get_large_audio_transcription(**episode)
+        transcriber.get_large_audio_transcription(**episode)
 
     except Exception as e:
         print(e)

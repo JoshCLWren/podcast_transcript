@@ -86,9 +86,7 @@ async def create_feed_transcript(request):
             return web.json_response({"status": "success", "job id": transcript_job.id})
 
         except:
-            import pdb
-
-            pdb.set_trace()
+            return web.json_response({"status": "failure", "error": "job not found"})
 
     except Exception as e:
 

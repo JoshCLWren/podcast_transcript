@@ -23,6 +23,7 @@ def get_large_audio_transcription(path, **episode):
     Splitting the large audio file into chunks
     and apply speech recognition on each of these chunks
     """
+
     # open the audio file using pydub
     start_time = time.time()
     sound = AudioSegment.from_wav(path)
