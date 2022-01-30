@@ -2,6 +2,11 @@ import mp3_to_wav
 import transcriber
 import database
 import feedparser
+from rq import Queue
+from worker import conn
+from utils import _count_words_at_url
+
+q = Queue(connection=conn)
 
 
 async def feed_transcriber(feed_url):
@@ -34,18 +39,15 @@ async def feed_transcriber(feed_url):
             continue
 
         try:
+            q.enqueue(transcriber.get_large_audio_transcription, wav_file, **episode)
 
-            transcript_output = transcriber.get_large_audio_transcription(wav_file)
-
-            episode["transcript"] = transcript_output
-            await database.insert_transcript(**episode)
         except Exception as e:
             print(e)
 
             continue
 
 
-async def episode_transcriber(**episode):
+def episode_transcriber(**episode):
     """Transcribes a single episode of a podcast."""
 
     try:
@@ -58,7 +60,7 @@ async def episode_transcriber(**episode):
 
     try:
         episode["path"] = wav_file
-        return await transcriber.get_large_audio_transcription(**episode)
+        return transcriber.get_large_audio_transcription(**episode)
 
     except Exception as e:
         print(e)

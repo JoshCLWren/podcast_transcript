@@ -1,6 +1,6 @@
 # importing libraries
 # from https://www.thepythoncode.com/article/using-speech-recognition-to-convert-speech-to-text-python
-import chunk
+
 import speech_recognition as sr
 import os
 from pydub import AudioSegment
@@ -9,18 +9,22 @@ import shutil
 import database
 from joblib import Parallel, delayed
 import time
+from rq import Queue
+from worker import conn
+import asyncio
 
 # create a speech recognition object
 r = sr.Recognizer()
-
+q = Queue(connection=conn)
 # a function that splits the audio file into chunks
 # and applies speech recognition
-async def get_large_audio_transcription(path, **episode):
+def get_large_audio_transcription(path, **episode):
     """
     Splitting the large audio file into chunks
     and apply speech recognition on each of these chunks
     """
     # open the audio file using pydub
+    start_time = time.time()
     sound = AudioSegment.from_wav(path)
     print("Splitting audio file into chunks")
     # split audio sound where silence is 700 miliseconds or more and get chunks
@@ -41,7 +45,7 @@ async def get_large_audio_transcription(path, **episode):
     if not os.path.isdir(folder_name):
         os.mkdir(folder_name)
     # process each chunk
-    start_time = time.time()
+
     results = Parallel(n_jobs=-1)(
         delayed(chunk_processor)(folder_name, i, chunk)
         for i, chunk in enumerate(chunks)
@@ -52,10 +56,13 @@ async def get_large_audio_transcription(path, **episode):
     whole_text = "".join(results)
     whole_text = whole_text.replace("\n", " ")
     episode["transcript"] = whole_text
-    total_time = end_time - start_time
-
-    await database.insert_transcript(**episode)
-    return "Time taken to transcribe the audio file: ", total_time, "seconds"
+    _time = end_time - start_time
+    print(f"Time taken to transcribe the audio file: {_time}")
+    try:
+        asyncio.run(_insert_into_db(**episode))
+    except Exception as e:
+        print("task failed")
+        print(e)
 
 
 def chunk_processor(folder_name, i, audio_chunk):
@@ -78,3 +85,11 @@ def chunk_processor(folder_name, i, audio_chunk):
             return f"error: {e}"
         except sr.RequestError as e:
             return f"error: {e}"
+
+
+async def _insert_into_db(**episode):
+    """
+    Inserting the episode into the database
+    """
+    print("Inserting into database")
+    return await database.insert_transcript(**episode)

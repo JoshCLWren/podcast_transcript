@@ -32,7 +32,8 @@ pyparsing==3.0.6
 pyrepl==0.9.0
 python-dateutil==2.8.2
 PyYAML==6.0
-redis==4.1.1
+redis==2.10.6
+rq==0.12.0
 sgmllib3k==1.0.0
 six==1.16.0
 SpeechRecognition==3.8.1
