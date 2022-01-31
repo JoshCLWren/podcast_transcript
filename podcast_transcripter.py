@@ -5,12 +5,14 @@ import feedparser
 from rq import Queue
 from worker import conn
 from utils import _count_words_at_url
+import time
 
 q = Queue(connection=conn)
 
 
 def feed_transcriber(feed_url):
     """Transcribes an entire rss feed of a podcast."""
+    start_time = time.time()
     feed = feedparser.parse(feed_url)
 
     for item in feed.entries:
@@ -46,10 +48,12 @@ def feed_transcriber(feed_url):
             print(e)
 
             continue
+    end_time = time.time()
+    print(f"Time to transcribe feed: {end_time - start_time}")
 
 
 def episode_transcriber(**episode):
-    """Transcribes a single episode of a podcast."""
+    """Transcribes a single audio file."""
 
     try:
         wav_file = mp3_to_wav.wav_converter(
@@ -67,3 +71,16 @@ def episode_transcriber(**episode):
         print(e)
 
         return
+
+
+def video_transcriber(url):
+    """Transcribes a video file's audio."""
+    wav_file = mp3_to_wav.video_to_wav(url)
+    episode = {
+        "audio_url": url,
+        "podcast_title": "Fake Podcast",
+        "video_title": "Fake Episode",
+        "rss_url": "https://fake.com",
+        "path": wav_file,
+    }
+    transcriber.get_large_audio_transcription(**episode)

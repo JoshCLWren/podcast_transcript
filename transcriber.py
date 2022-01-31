@@ -64,6 +64,8 @@ def get_large_audio_transcription(path, **episode):
     except Exception as e:
         print("task failed")
         print(e)
+        with open(f"{path}.txt", "w") as f:
+            f.write(whole_text)
 
 
 def chunk_processor(folder_name, i, audio_chunk):

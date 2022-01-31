@@ -179,6 +179,21 @@ async def seed_transcript(request):
         )
 
 
+async def transcribe_video(request):
+    if request.headers.get("api-key") != api_key:
+        raise web.HTTPUnauthorized()
+    body = await request.json()
+    try:
+        transcript_job = q.enqueue(
+            podcast_transcripter.video_transcriber,
+            body["url"],
+        )
+
+        return web.json_response({"status": "success", "job id": transcript_job.id})
+    except:
+        return web.json_response({"status": "failure", "error": "job not found"})
+
+
 app.add_routes(
     [
         web.get("/", index),
@@ -192,6 +207,7 @@ app.add_routes(
         web.delete("/transcripts:drop_table", drop_transcript_table),
         web.post("/transcripts:seed", seed_transcript),
         web.post("/count", count_words_at_url),
+        web.post("/transcripts:video", transcribe_video),
     ]
 )
 
