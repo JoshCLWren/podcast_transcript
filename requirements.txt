@@ -40,7 +40,8 @@ Pygments==2.11.2
 pyparsing==3.0.6
 pyrepl==0.9.0
 python-dateutil==2.8.2
-pytube==11.0.2
+-e git+https://github.com/JoshCLWren/pytube@5186efa51e9fe7e9f9b63b99d8501bbe148287e3#egg=pytube
+pytubemp3==0.3
 PyYAML==6.0
 redis==2.10.6
 requests==2.27.1

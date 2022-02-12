@@ -16,9 +16,5 @@ compile:
 server:
 	watchmedo auto-restart -p "*.py" -R python -- app.py
 
-update:
-	pip freeze > requirements.txt
-	make install
-
 heroku:
 	heroku local
