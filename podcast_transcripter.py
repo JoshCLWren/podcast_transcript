@@ -1,11 +1,10 @@
 import audio_conversion
 import transcriber
-import database
 import feedparser
 from rq import Queue
 from worker import conn
-from utils import _count_words_at_url
 import time
+import pytube
 
 q = Queue(connection=conn)
 
@@ -20,9 +19,8 @@ def feed_transcriber(feed_url):
 
             episode = {
                 "audio_url": item.links[1].href,
-                "podcast_title": feed["feed"]["title"],
-                "episode_title": item.title,
-                "rss_url": feed_url,
+                "title": item.title,
+                "media_type": "podcast",
             }
 
         except IndexError:
@@ -34,7 +32,7 @@ def feed_transcriber(feed_url):
 
         try:
             wav_file = audio_conversion.wav_converter(
-                episode["audio_url"], episode["podcast_title"]
+                episode["audio_url"], episode["title"]
             )
         except Exception as e:
             print(e)
@@ -57,7 +55,7 @@ def episode_transcriber(**episode):
 
     try:
         wav_file = audio_conversion.wav_converter(
-            episode["audio_url"], episode["episode_title"]
+            episode["audio_url"], episode["title"]
         )
     except Exception as e:
         print(e)
@@ -76,11 +74,10 @@ def episode_transcriber(**episode):
 def video_transcriber(url):
     """Transcribes a video file's audio."""
     wav_file = audio_conversion.video_to_wav(url)
-    episode = {
+    video = {
+        "title": f"{pytube.YouTube(url).title}",
         "audio_url": url,
-        "podcast_title": "Fake Podcast",
-        "episode_title": "Fake Episode",
-        "rss_url": "https://fake.com",
         "path": wav_file,
+        "media_type": "youtube_video",
     }
-    transcriber.get_large_audio_transcription(**episode)
+    transcriber.get_large_audio_transcription(**video)
