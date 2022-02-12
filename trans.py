@@ -1,7 +1,7 @@
 from vosk import Model, KaldiRecognizer
 import wave
 import json
-import mp3_to_wav
+import audio_conversion
 
 model_path = "/Users/josh.wren/Code/playground/podcast_transcript/vosk-model-en-us-0.22"
 

@@ -26,9 +26,6 @@ def video_to_wav(url):
     start_time = time.time()
     stream_url = pytube.YouTube(url).streams.filter(only_audio=True).first().url
     print(f"Downloading {stream_url}")
-    import pdb
-
-    pdb.set_trace()
     output_file = f"{pytube.YouTube(url).title}"
     urllib.request.urlretrieve(stream_url, f"{output_file}.mp4")
 

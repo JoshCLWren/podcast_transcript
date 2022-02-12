@@ -6,12 +6,6 @@ create python environment `make venv`
 
 install dependencies `make deps-install`
 
-Extract vosk-model-en-us-022 into this folder. The model is found here:
-`https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip`
+requires redis server to be running locally
 
-convert an mp3 to a wav file using mp3_to_wav.py
-
-run trans.py to transcribe the audio to text.
-
-Forked from:
-`https://medium.com/@garcjes/transcribe-a-podcast-in-python-with-vosk-api-35eba7d96c1f`
+run 'python worker.py' for job queue

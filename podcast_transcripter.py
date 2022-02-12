@@ -1,4 +1,4 @@
-import mp3_to_wav
+import audio_conversion
 import transcriber
 import database
 import feedparser
@@ -33,7 +33,7 @@ def feed_transcriber(feed_url):
             continue
 
         try:
-            wav_file = mp3_to_wav.wav_converter(
+            wav_file = audio_conversion.wav_converter(
                 episode["audio_url"], episode["podcast_title"]
             )
         except Exception as e:
@@ -56,7 +56,7 @@ def episode_transcriber(**episode):
     """Transcribes a single audio file."""
 
     try:
-        wav_file = mp3_to_wav.wav_converter(
+        wav_file = audio_conversion.wav_converter(
             episode["audio_url"], episode["episode_title"]
         )
     except Exception as e:
@@ -75,11 +75,11 @@ def episode_transcriber(**episode):
 
 def video_transcriber(url):
     """Transcribes a video file's audio."""
-    wav_file = mp3_to_wav.video_to_wav(url)
+    wav_file = audio_conversion.video_to_wav(url)
     episode = {
         "audio_url": url,
         "podcast_title": "Fake Podcast",
-        "video_title": "Fake Episode",
+        "episode_title": "Fake Episode",
         "rss_url": "https://fake.com",
         "path": wav_file,
     }
