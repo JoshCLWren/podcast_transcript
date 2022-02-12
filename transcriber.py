@@ -38,7 +38,7 @@ def get_large_audio_transcription(path, **episode):
         # adjust this per requirement
         silence_thresh=sound.dBFS - 14,
         # keep the silence for 1 second, adjustable as well
-        keep_silence=500,
+        keep_silence=True,
     )
 
     print("Applying speech recognition on each chunk")
@@ -54,10 +54,12 @@ def get_large_audio_transcription(path, **episode):
         for i, chunk in enumerate(chunks)
     )
     end_time = time.time()
-    print(f"Time to process chunks using {os.cpu_count()}: {end_time - result_time}")
+    print(
+        f"Time to process chunks using {os.cpu_count()} cpu cores: {end_time - result_time}"
+    )
 
-    # return the text for all chunks detected
     shutil.rmtree(folder_name)
+
     whole_text = "".join(results)
     whole_text = whole_text.replace("\n", " ")
     episode["transcript"] = whole_text
@@ -76,7 +78,6 @@ def get_large_audio_transcription(path, **episode):
 def chunk_processor(folder_name, i, audio_chunk):
     # export audio chunk and save it in
     # the `folder_name` directory.
-
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
     print(f"exporting {chunk_filename}")
     audio_chunk.export(chunk_filename, format="wav")
@@ -90,9 +91,11 @@ def chunk_processor(folder_name, i, audio_chunk):
             print(text)
             return f"{text.capitalize()}. \n"
         except sr.UnknownValueError as e:
-            return f"error: {e}"
+            error_text = f"chunk{i} unintelligible... error: {e}"
+            print(error_text)
+            return error_text
         except sr.RequestError as e:
-            return f"error: {e}"
+            return "API unavailable for this chunk."
 
 
 async def _insert_into_db(**episode):
