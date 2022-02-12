@@ -55,6 +55,7 @@ def video_to_wav(url):
     wav_file = f"{regexed_title}.wav"
     song = song.set_channels(1)
     song = song.set_frame_rate(16000)
+    song = song.normalize()
     end_time = time.time()
     total_time = end_time - start_time
     print(f"Time to convert mp4 to wav: {audio_conversion_start_time - end_time}")
