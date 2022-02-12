@@ -15,13 +15,12 @@ async def create_transcript_table():
                 """
                 CREATE TABLE transcripts(
                 id bigserial PRIMARY KEY,
-                podcast_title VARCHAR(255) NOT NULL,
-                episode_title VARCHAR(255) NOT NULL,
+                title VARCHAR(255) NOT NULL,
                 transcript TEXT NOT NULL,
                 audio_url VARCHAR(255) NOT NULL,
+                media_type VARCHAR(50) NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                rss_url VARCHAR(255) NOT NULL
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
                 );
                 """
             )
@@ -38,8 +37,8 @@ async def insert_transcript(**transcript_data):
         async with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             await cur.execute(
                 """
-            INSERT INTO transcripts (podcast_title, episode_title, rss_url, transcript, audio_url)
-            VALUES (%(podcast_title)s, %(episode_title)s, %(rss_url)s, %(transcript)s, %(audio_url)s) RETURNING *;
+            INSERT INTO transcripts (title, transcript, audio_url, media_type)
+            VALUES (%(title)s, %(transcript)s, %(audio_url)s, %(media_type)s) RETURNING *;
             """,
                 transcript_data,
             )
@@ -79,14 +78,14 @@ async def update_transcript(**transcript_data):
         async with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             await cur.execute(
                 """
-            UPDATE transcripts SET
-            podcast_title = %(podcast_title)s,
-            episode_title = %(episode_title)s,
-            rss_url = %(rss_url)s,
-            transcript = %(transcript)s,
-            audio_url = %(audio_url)s
-            WHERE id = %(id)s RETURNING *;
-            """,
+                UPDATE transcripts SET
+                title = %(title)s,
+                transcript = %(transcript)s,
+                audio_url = %(audio_url)s,
+                media_type = %(media_type)s,
+                update_at = NOW()
+                WHERE id = %(id)s RETURNING *;
+                """,
                 transcript_data,
             )
             transcript = await cur.fetchone()
