@@ -1,6 +1,6 @@
 import database
 from aiohttp import web
-import podcast_transcripter
+import audio_jobs
 import os
 from rq import Queue
 from worker import conn
@@ -38,7 +38,7 @@ async def create_transcript(request):
         body = await request.json()
 
         transcript_job = q.enqueue(
-            podcast_transcripter.episode_transcriber,
+            audio_jobs.episode_transcriber,
             **body,
         )
 
@@ -57,9 +57,7 @@ async def create_feed_transcript(request):
         raise web.HTTPUnauthorized()
     try:
         body = await request.json()
-        transcript_job = q.enqueue(
-            podcast_transcripter.feed_transcriber, body["feed_url"]
-        )
+        transcript_job = q.enqueue(audio_jobs.feed_transcriber, body["feed_url"])
 
         try:
 
@@ -173,7 +171,7 @@ async def transcribe_video(request):
     body = await request.json()
     try:
         transcript_job = q.enqueue(
-            podcast_transcripter.video_transcriber,
+            audio_jobs.video_transcriber,
             body["url"],
         )
 
