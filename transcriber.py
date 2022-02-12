@@ -12,6 +12,7 @@ import time
 from rq import Queue
 from worker import conn
 import asyncio
+import os
 
 # create a speech recognition object
 r = sr.Recognizer()
@@ -46,12 +47,15 @@ def get_large_audio_transcription(path, **episode):
     if not os.path.isdir(folder_name):
         os.mkdir(folder_name)
     # process each chunk
+    result_time = time.time()
 
     results = Parallel(n_jobs=-1)(
         delayed(chunk_processor)(folder_name, i, chunk)
         for i, chunk in enumerate(chunks)
     )
     end_time = time.time()
+    print(f"Time to process chunks using {os.cpu_count()}: {end_time - result_time}")
+
     # return the text for all chunks detected
     shutil.rmtree(folder_name)
     whole_text = "".join(results)
