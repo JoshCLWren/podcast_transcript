@@ -66,6 +66,7 @@ def get_large_audio_transcription(path, **episode):
         print(e)
         with open(f"{path}.txt", "w") as f:
             f.write(whole_text)
+    os.remove(f"{path.name}")
 
 
 def chunk_processor(folder_name, i, audio_chunk):
