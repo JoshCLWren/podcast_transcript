@@ -18,7 +18,7 @@ recognizer = sr.Recognizer()
 
 # a function that splits the audio file into chunks
 # and applies speech recognition
-def get_large_audio_transcription(path, service="google", **episode):
+def get_large_audio_transcription(path, **episode):
     """
     Splitting the large audio file into chunks
     and apply speech recognition on each of these chunks
@@ -61,7 +61,7 @@ def get_large_audio_transcription(path, service="google", **episode):
         whole_text = "".join(results)
         whole_text = whole_text.replace("\n", " ")
         episode[f"{subscription}_transcript"] = whole_text
-
+    episode["redis_job"] = "n/a"
     shutil.rmtree(folder_name)
     _time = end_time - start_time
     print(f"Time taken to transcribe the audio file: {_time}")
@@ -125,6 +125,7 @@ async def _insert_into_db(**episode):
     Inserting the episode into the database
     """
     print("Inserting into database")
+    episode["redis_status"] = "done"
     return await database.update_transcript(**episode)
 
 

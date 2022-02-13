@@ -20,6 +20,8 @@ async def create_transcript_table():
                 wit_ai_transcript TEXT,
                 audio_url VARCHAR(255) NOT NULL,
                 media_type VARCHAR(50) NOT NULL,
+                redis_job VARCHAR(255),
+                redis_status VARCHAR(255),
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
                 );
@@ -38,8 +40,8 @@ async def insert_transcript(**transcript_data):
         async with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             await cur.execute(
                 """
-            INSERT INTO transcripts (title, audio_url, media_type)
-            VALUES (%(title)s, %(audio_url)s, %(media_type)s) RETURNING *;
+            INSERT INTO transcripts (title, audio_url, media_type, redis_job, redis_status)
+            VALUES (%(title)s, %(audio_url)s, %(media_type)s, %(redis_job)s, %(redis_status)s) RETURNING *;
             """,
                 transcript_data,
             )
@@ -77,18 +79,14 @@ async def delete_transcript(_id):
 async def update_transcript(**transcript_data):
     async with aiopg.connect(DATABASE_URL) as conn:
         async with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            sql = "UPDATE transcripts SET "
+            sql += "".join(
+                f"{key} = %({key})s, " for key, _value in transcript_data.items()
+            )
+
+            sql += "updated_at = NOW() WHERE id = %(id)s RETURNING *;"
             await cur.execute(
-                """
-                UPDATE transcripts SET
-                id = %(id)s,
-                title = %(title)s,
-                google_transcript = %(google_transcript)s,
-                wit_ai_transcript = %(wit_ai_transcript)s,
-                audio_url = %(audio_url)s,
-                media_type = %(media_type)s,
-                updated_at = NOW()
-                WHERE id = %(id)s RETURNING *;
-                """,
+                sql,
                 transcript_data,
             )
             transcript = await cur.fetchone()
