@@ -41,10 +41,7 @@ def get_large_audio_transcription(path, **episode):
     )
 
     print("Applying speech recognition on each chunk")
-    folder_name = f"{path.name}-audio-chunks"
-    # create a directory to store the audio chunks
-    if not os.path.isdir(folder_name):
-        os.mkdir(folder_name)
+    folder_name = _setup(path)
     # process each chunk
     for subscription in ["google", "wit_ai"]:
         result_time = time.time()
@@ -62,20 +59,48 @@ def get_large_audio_transcription(path, **episode):
         whole_text = whole_text.replace("\n", " ")
         episode[f"{subscription}_transcript"] = whole_text
     episode["redis_job"] = "n/a"
-    shutil.rmtree(folder_name)
+
     _time = end_time - start_time
     print(f"Time taken to transcribe the audio file: {_time}")
+
     try:
         asyncio.run(_insert_into_db(**episode))
     except Exception as e:
-        print("task failed")
-        print(e)
-        with open(f"{path}.txt", "w") as f:
-            f.write(whole_text)
+        _log_error(path, whole_text, e)
+
+    _teardown(path, folder_name)
+
+
+def _teardown(path, folder_name):
+    """teardown folder for audio chunks and tmp folder"""
+    shutil.rmtree(folder_name)
     os.remove(f"{path.name}")
+    shutil.rmtree("tmp")
+
+
+def _setup(path):
+    """setup folder for audio chunks"""
+    folder_name = f"{path.name}-audio-chunks"
+    # create a directory to store the audio chunks
+    if not os.path.isdir(folder_name):
+        os.mkdir(folder_name)
+    return folder_name
+
+
+def _log_error(path, whole_text, e):
+    """In the event of an error, log the error and the transcript to a txt file"""
+    print("task failed")
+    print(e)
+    if not os.path.isdir("error_logs"):
+        os.mkdir("error_logs")
+    with open(f"error_logs/{path}.txt", "w") as f:
+        f.write("task failed")
+        f.write(str(e))
+        f.write(whole_text)
 
 
 def chunk_processor(folder_name, i, audio_chunk, service="google"):
+    """Process each chunk and apply speech recognition"""
     # export audio chunk and save it in
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
     print(f"exporting {chunk_filename}")
@@ -106,6 +131,7 @@ def recursive_translation(chunk_filename, service="google", speed=None):
 
 
 def audio_to_text(audio_listened, service="google", speed=None):
+    """Convert audio to text using wit or google"""
     wit_ai_key = os.getenv("WIT_AI_KEY")
 
     if service == "google":
@@ -114,6 +140,12 @@ def audio_to_text(audio_listened, service="google", speed=None):
         text = recognizer.recognize_wit(audio_listened, key=wit_ai_key)
     if speed != 1.0:
         text += f" (translated at {speed}x speed)"
+
+    return _grammarize(text)
+
+
+def _grammarize(text):
+    """Format the text to be somewhat grammatically correct."""
 
     punctuation = "?" if text[:3] in ["who", "wha", "whe", "why", "how"] else "."
 
@@ -124,23 +156,21 @@ async def _insert_into_db(**episode):
     """
     Inserting the episode into the database
     """
+
     print("Inserting into database")
     episode["redis_status"] = "done"
     return await database.update_transcript(**episode)
 
 
 def speed_change(_file, speed=1.0):
-    # Manually override the frame_rate. This tells the computer how many
-    # samples to play per second
+    """Adjust the speed of the audio file"""
+
     sound = AudioSegment.from_file(_file, format="wav")
 
     sound_with_altered_frame_rate = sound._spawn(
         sound.raw_data, overrides={"frame_rate": int(sound.frame_rate * speed)}
     )
 
-    # convert the sound with altered frame rate to a standard frame rate
-    # so that regular playback programs will work right. They often only
-    # know how to play audio at standard frame rate (like 44.1k)
     return sound_with_altered_frame_rate.set_frame_rate(sound.frame_rate)
 
 
@@ -149,6 +179,8 @@ def translation_context(
     service="google",
     speed=None,
 ):
+    """A context manager for applying speech recognition"""
+
     with sr.AudioFile(chunk_filename) as source:
         audio_listened = recognizer.record(source)
         # try converting it to text
