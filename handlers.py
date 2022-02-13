@@ -39,7 +39,8 @@ async def create_transcript(request):
 
         body = await request.json()
         body["title"] = "placeholder title"
-        body["transcript"] = "placeholder transcript"
+        body["redis_status"] = "pending"
+        body["redis_job"] = "pending"
         transcript = await database.insert_transcript(**body)
         body["id"] = transcript["id"]
         if body["media_type"] == "podcast":
@@ -52,7 +53,9 @@ async def create_transcript(request):
                 audio_jobs.video_transcriber,
                 **body,
             )
-
+        body["redis_job"] = transcript_job.id
+        body["redis_status"] = "started"
+        transcript = await database.update_transcript(**body)
         return web.json_response(
             {
                 "status": "success",
