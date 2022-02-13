@@ -89,7 +89,7 @@ def chunk_processor(folder_name, i, audio_chunk):
         print(f"Trying at {speed}x speed")
         speed -= 0.05
         if speed < 0.85:  # not seeing improvements anecdotally below this threshold
-            translation = ".."
+            return ""
     return translation
 
 
@@ -107,8 +107,11 @@ def audio_to_text(audio_listened, speed=None):
     text = recognizer.recognize_google(audio_listened)
     if speed != 1.0:
         text += f" (translated at {speed}x speed)"
-    print(text)
-    return f"{text.capitalize()}. \n"
+
+    punctuation = "?" if text[:3] in ["who", "wha", "whe", "why", "how"] else "."
+    if " " not in text:
+        punctuation = "!"
+    return f"{text.capitalize()}{punctuation} "
 
 
 async def _insert_into_db(**episode):
