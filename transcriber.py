@@ -28,16 +28,21 @@ def get_large_audio_transcription(path, **episode):
     start_time = time.time()
     sound = AudioSegment.from_wav(path)
     print("Splitting audio file into chunks")
-    # split audio sound where silence is 700 miliseconds or more and get chunks
+    # split audio sound where silence is 500 milliseconds or more and get chunks
+
+    if os.environ.get("KEEP_SILENCE") == "True":
+        silence_value = True
+    else:
+        silence_value = int(os.environ.get("SILENCE_VALUE"))
 
     chunks = split_on_silence(
         sound,
         # experiment with this value for your target audio file
-        min_silence_len=500,
+        min_silence_len=int(os.environ.get("MIN_SILENCE_LEN", 500)),
         # adjust this per requirement
-        silence_thresh=sound.dBFS - 14,
+        silence_thresh=sound.dBFS - float(os.environ.get("SILENCE_THRESH", 14)),
         # keep the silence for 1 second, adjustable as well
-        keep_silence=True,
+        keep_silence=silence_value,
     )
 
     print("Applying speech recognition on each chunk")
