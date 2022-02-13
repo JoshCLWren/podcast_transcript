@@ -58,7 +58,7 @@ def get_large_audio_transcription(path, **episode):
         whole_text = "".join(results)
         whole_text = whole_text.replace("\n", " ")
         episode[f"{subscription}_transcript"] = whole_text
-    episode["redis_job"] = "n/a"
+    episode["redis_job"] = None
 
     _time = end_time - start_time
     print(f"Time taken to transcribe the audio file: {_time}")
