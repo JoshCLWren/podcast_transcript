@@ -73,7 +73,7 @@ def episode_transcriber(**episode):
 
 def video_transcriber(url):
     """Transcribes a video file's audio."""
-    wav_file = audio_conversion.video_to_wav(url)
+    wav_file = audio_conversion.video_to_audio(url)
     video = {
         "title": f"{pytube.YouTube(url).title}",
         "audio_url": url,
