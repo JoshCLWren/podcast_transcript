@@ -22,7 +22,6 @@ app.add_routes(
         web.post("/transcripts:create_table", create_transcript_table),
         web.delete("/transcripts:drop_table", drop_transcript_table),
         web.post("/transcripts:seed", seed_transcript),
-        web.post("/transcripts:video", transcribe_video),
     ]
 )
 
