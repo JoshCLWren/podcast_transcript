@@ -45,11 +45,29 @@ def download_resource(url, title, format):
 
 
 def video_to_audio(url):
-    """Prepares a youtube url to be converted to a wav."""
+    """Prepares and processes a youtube url."""
 
     stream_url = pytube.YouTube(url).streams.filter(only_audio=True).first().url
-    title = f"{pytube.YouTube(url).title}"
-    print(f"Downloading {title}")
-    regexed_title = re.sub(r"[^a-zA-Z0-9]", "", title)
 
-    return wav_converter(url=stream_url, title=regexed_title, format="mp4")
+    video_object = {
+        "title": _youtube_title_formatter(url),
+    }
+
+    if stream_url:
+        video_object["path"] = wav_converter(
+            url=stream_url, title=video_object["title"], format="mp4"
+        )
+    else:
+        video_object["path"] = None
+
+    return video_object
+
+
+def _youtube_title_formatter(url):
+    """Removes all non-alphanumeric characters to aid in file/directory creation for the youtube url conversion process."""
+
+    title = f"{pytube.YouTube(url).title}"
+
+    print(f"Downloading {title}")
+
+    return re.sub(r"[^a-zA-Z0-9]", "", title) if title else "untitled - Error in title"
