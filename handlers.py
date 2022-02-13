@@ -57,7 +57,7 @@ async def create_transcript(request):
             {
                 "status": "success",
                 "job_id": transcript_job.id,
-                "transcript_id": transcript,
+                "transcript_id": transcript["id"],
             }
         )
 

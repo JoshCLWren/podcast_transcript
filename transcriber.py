@@ -81,31 +81,31 @@ def chunk_processor(folder_name, i, audio_chunk):
     print(f"exporting {chunk_filename}")
     audio_chunk.export(chunk_filename, format="wav")
     print("Applying speech recognition on chunk")
-    # recognize the chunk
+
+    speed = 1.00
+    translation = None
+    while not translation:
+        translation = recursive_translation(chunk_filename, speed)
+        print(f"Trying at {speed}x speed")
+        speed -= 0.05
+        if speed < 0.85:  # not seeing improvements anecdotally below this threshold
+            translation = ".."
+    return translation
+
+
+def recursive_translation(chunk_filename, speed=None):
+    """
+    Recursively apply speech recognition on the audio file
+    """
     try:
-        return translation_context(chunk_filename)
+        return translation_context(chunk_filename, speed)
     except Exception:
-        _extracted_from_chunk_processor(chunk_filename, 0.98)
-        try:
-            return translation_context(chunk_filename, speed=0.98)
-        except Exception:
-            _extracted_from_chunk_processor(chunk_filename, 0.95)
-            try:
-                return translation_context(chunk_filename, speed=0.95)
-            except Exception:
-                return "--"
+        return None
 
 
-# TODO Rename this here and in `chunk_processor`
-def _extracted_from_chunk_processor(chunk_filename, arg2):
-    audio_chunk = speed_change(chunk_filename, arg2)
-    audio_chunk.export(chunk_filename, format="wav")
-
-
-# TODO Rename this here and in `chunk_processor`
 def audio_to_text(audio_listened, speed=None):
     text = recognizer.recognize_google(audio_listened)
-    if speed:
+    if speed != 1.0:
         text += f" (translated at {speed}x speed)"
     print(text)
     return f"{text.capitalize()}. \n"
