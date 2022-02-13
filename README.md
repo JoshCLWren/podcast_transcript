@@ -4,7 +4,7 @@ a .envrc is required to run locally
 
 something like:
     export DATABASE_URL=postgres://localhost:5431
-    export API_KEY=TEST
+    export API_KEY=---REDACTED---
     export REDISTOGO_URL=redis://localhost:6379
     export env=development
 

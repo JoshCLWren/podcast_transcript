@@ -1,0 +1,366 @@
+_type: export
+__export_format: 4
+__export_date: 2022-02-13T21:48:29.136Z
+__export_source: insomnia.desktop.app:v2021.7.2
+resources:
+  - _id: req_fdb124eb49284baaa990f1af60acc07f
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788855850
+    created: 1641704149272
+    url: "{{ _.path }}transcripts:seed"
+    name: seed_table
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: '{"transcript_count": 10}'
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+      - name: Content-Type
+        value: application/json
+    authentication: {}
+    metaSortKey: -1641704149272
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    parentId: null
+    modified: 1641703993331
+    created: 1641703993331
+    name: podcast_transcripts
+    description: ""
+    scope: collection
+    _type: workspace
+  - _id: req_e8ec6de42b144317b38dd077220f2661
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788879341
+    created: 1641704774161
+    url: "{{ _.path }}transcripts/-/feed"
+    name: create_feed_transcript
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: '{"feed_url":
+        "https://www.wnycstudios.org/feeds/series/podcasts?limit=8002"}	'
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+      - name: Content-Type
+        value: application/json
+    authentication: {}
+    metaSortKey: -1641704120304.25
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_f0542309801b4098b77af2d2b9b97076
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1641708527881
+    created: 1641706016850
+    url: "{{ _.path }}transcripts"
+    name: get_transcript_collection
+    description: ""
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    parameters: []
+    headers: []
+    authentication: {}
+    metaSortKey: -1641704105820.375
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_61dc5038b0d34940bc0224c1c0a35fe3
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788471722
+    created: 1641707022006
+    url: "{{ _.path }}transcripts/2"
+    name: get_transcript_resource
+    description: ""
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    parameters: []
+    headers: []
+    authentication: {}
+    metaSortKey: -1641704098578.4375
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_36f5fa97ee814ec5986d436a0e085e09
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788864361
+    created: 1641707037207
+    url: "{{ _.path }}transcripts/2"
+    name: delete_transcript_resource
+    description: ""
+    method: DELETE
+    body:
+      mimeType: application/json
+      text: ""
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+    authentication: {}
+    metaSortKey: -1641704094957.4688
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_d968c50944824d438f35e7b5c94ecde8
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788864970
+    created: 1641707106120
+    url: "{{ _.path }}transcripts/3"
+    name: update_transcript_resource
+    description: ""
+    method: PUT
+    body:
+      mimeType: application/json
+      text: |-
+        {
+        		"podcast_title": "Fake Podcast",
+        		"episode_title": "Fake Episode",
+        		"rss_url": "https://fake.com",
+        		"transcript": "Fake transcript",
+        		"audio_url": "https://fake.com"
+        }
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+      - name: accept
+        value: application/json
+    authentication: {}
+    metaSortKey: -1641704093146.9844
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_938e61ee17da4b2980b49ddaff37aff2
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788868160
+    created: 1641707293567
+    url: "{{ _.path }}transcripts"
+    name: post_transcript_resource:audio
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: >-
+        {
+        	"audio_url": "https://traffic.libsyn.com/secure/5minutehistory/The_History_of_London.mp3",
+        	"title": "---REDACTED---_episode_london",
+        	"media_type": "podcast"
+
+
+        }
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+      - name: accept
+        value: application/json
+    authentication: {}
+    metaSortKey: -1641704092241.7422
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_5d21caf2246342ae8c1cbda121425863
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788870138
+    created: 1643589100548
+    url: "{{ _.path }}transcripts"
+    name: post_transcript_resource:video
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+        	"audio_url": "https://wwwutube.com/watch?v=ZXsQAXx_ao0",
+        	"media_type": "youtube"
+        }
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+      - name: accept
+        value: application/json
+    authentication: {}
+    metaSortKey: -1641704092015.4316
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_3df03e00ff2b4257b472d81685311be9
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1644788399487
+    created: 1641704701334
+    url: "{{ _.path }}transcripts:drop_table"
+    name: drop_table
+    description: ""
+    method: DELETE
+    body:
+      mimeType: application/json
+      text: ""
+    parameters: []
+    headers:
+      - name: api-key
+        value: ---REDACTED---
+    authentication: {}
+    metaSortKey: -1641704091336.5
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_c19e86cefce74012baa78dcd0073f3ef
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1641708624778
+    created: 1641704033401
+    url: "{{ _.path }}"
+    name: create_table
+    description: ""
+    method: GET
+    body: {}
+    parameters: []
+    headers: []
+    authentication: {}
+    metaSortKey: -1641704033401
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: env_ae0a45bdfdd54a968470d5faa030c9305387e3b0
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1642998638939
+    created: 1641703993345
+    name: Base Environment
+    data: {}
+    dataPropertyOrder: {}
+    color: null
+    isPrivate: false
+    metaSortKey: 1641703993345
+    _type: environment
+  - _id: jar_ae0a45bdfdd54a968470d5faa030c9305387e3b0
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1641703993346
+    created: 1641703993346
+    name: Default Jar
+    cookies: []
+    _type: cookie_jar
+  - _id: spc_030bec8e5b484dd190959fb929e47c58
+    parentId: wrk_d117b7c4e42d4c3ebeb7a5538b6c6892
+    modified: 1641703993337
+    created: 1641703993337
+    fileName: podcast_transcripts
+    contents: ""
+    contentType: yaml
+    _type: api_spec
+  - _id: env_14d1ee1eb22c4b6eb12fe22ad2533e18
+    parentId: env_ae0a45bdfdd54a968470d5faa030c9305387e3b0
+    modified: 1642998761080
+    created: 1641708244449
+    name: Production
+    data:
+      path: https://podcasttranscriber.herokuapp.com/
+    dataPropertyOrder:
+      "&":
+        - path
+    color: null
+    isPrivate: false
+    metaSortKey: 1641708244449
+    _type: environment
+  - _id: env_061f8fbbdaba4d63828e7d1406c2c952
+    parentId: env_ae0a45bdfdd54a968470d5faa030c9305387e3b0
+    modified: 1642998761903
+    created: 1641708270481
+    name: Development
+    data:
+      path: http://0.0.0.0:8080/
+    dataPropertyOrder:
+      "&":
+        - path
+    color: null
+    isPrivate: false
+    metaSortKey: 1641708270481
+    _type: environment
+  - _id: env_1551671585b049ce90129659d490b06d
+    parentId: env_ae0a45bdfdd54a968470d5faa030c9305387e3b0
+    modified: 1643570481937
+    created: 1642998641689
+    name: GCP
+    data:
+      path: https://podcasttransciber.uw.r.appspot.com/
+    dataPropertyOrder:
+      "&":
+        - path
+    color: null
+    isPrivate: false
+    metaSortKey: 1642998641689
+    _type: environment
+  - _id: env_fbe8b576d792433e83a20441569d20d3
+    parentId: env_ae0a45bdfdd54a968470d5faa030c9305387e3b0
+    modified: 1643570513628
+    created: 1643570472772
+    name: HEROKU CLONE
+    data:
+      path: https://audioconvert.herokuapp.com/
+    dataPropertyOrder:
+      "&":
+        - path
+    color: null
+    isPrivate: false
+    metaSortKey: 1643570472772
+    _type: environment
