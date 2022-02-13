@@ -4,7 +4,8 @@ import feedparser
 from rq import Queue
 from worker import conn
 import time
-import pytube
+import database
+import asyncio
 
 q = Queue(connection=conn)
 
@@ -15,6 +16,7 @@ def feed_transcriber(feed_url):
     feed = feedparser.parse(feed_url)
 
     for item in feed.entries:
+
         try:
 
             episode = {
@@ -23,19 +25,11 @@ def feed_transcriber(feed_url):
                 "media_type": "podcast",
             }
 
-        except IndexError:
-            # some rare early episodes have different indexing or no link to an mp3 and for the purpose of this script we will skip such episodes
-            print(
-                f"{item.title} has a zero episode or a badly formatted episode in the feed skipping due to formatting errors."
-            )
-            continue
-
-        try:
             wav_file = audio_conversion.wav_converter(
                 episode["audio_url"], episode["title"]
             )
         except Exception as e:
-            print(e)
+            _handle_error(e, **episode)
             continue
 
         try:
@@ -43,7 +37,7 @@ def feed_transcriber(feed_url):
             transcriber.get_large_audio_transcription(**episode)
 
         except Exception as e:
-            print(e)
+            _handle_error(e, **episode)
 
             continue
     end_time = time.time()
@@ -58,7 +52,7 @@ def episode_transcriber(**episode):
             episode["audio_url"], episode["title"]
         )
     except Exception as e:
-        print(e)
+        _handle_error(e, **episode)
         return
 
     try:
@@ -66,15 +60,39 @@ def episode_transcriber(**episode):
         transcriber.get_large_audio_transcription(**episode)
 
     except Exception as e:
-        print(e)
+        _handle_error(e, **episode)
 
         return
 
 
 def video_transcriber(**kwargs):
     """Transcribes a video file's audio."""
-    wav_file = audio_conversion.video_to_audio(kwargs["audio_url"])
-    kwargs["title"] = (f"{pytube.YouTube(kwargs['audio_url']).title}",)
-    kwargs["path"] = wav_file
+    try:
+        prepared_video = audio_conversion.video_to_audio(kwargs["audio_url"])
+    except Exception as error:
+        _handle_error(error, **kwargs)
+        prepared_video = {"path": None, "title": None}
 
-    transcriber.get_large_audio_transcription(**kwargs)
+    kwargs["path"] = prepared_video.get("path")
+    kwargs["title"] = prepared_video.get("title")
+
+    try:
+        transcriber.get_large_audio_transcription(**kwargs)
+    except Exception as error:
+        _handle_error(error, **kwargs)
+
+
+def _handle_error(error, **kwargs):
+    """Handles errors and update redis status to failed."""
+
+    kwargs["redis_status"] = "failed"
+    kwargs["error_message"] = str(error)
+    kwargs["redis_job"] = "n/a"
+    print(f"***** Failed to transcribe audio url: {kwargs['audio_url']} *****")
+    print(f"***** Error: {error} *****")
+    print("***** Updating redis status to failed *****")
+    print("***** Updating redis job to n/a *****")
+    print("object contains:")
+    error_state = asyncio.run(database.update_transcript(**kwargs))
+    print(error_state)
+    return error_state
