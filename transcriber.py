@@ -12,14 +12,13 @@ from joblib import Parallel, delayed
 import time
 import asyncio
 import os
-from pydub import AudioSegment
 
 # create a speech recognition object
 recognizer = sr.Recognizer()
 
 # a function that splits the audio file into chunks
 # and applies speech recognition
-def get_large_audio_transcription(path, **episode):
+def get_large_audio_transcription(path, service="google", **episode):
     """
     Splitting the large audio file into chunks
     and apply speech recognition on each of these chunks
@@ -47,22 +46,23 @@ def get_large_audio_transcription(path, **episode):
     if not os.path.isdir(folder_name):
         os.mkdir(folder_name)
     # process each chunk
-    result_time = time.time()
+    for subscription in ["google", "wit_ai"]:
+        result_time = time.time()
 
-    results = Parallel(n_jobs=-1)(
-        delayed(chunk_processor)(folder_name, i, chunk)
-        for i, chunk in enumerate(chunks)
-    )
-    end_time = time.time()
-    print(
-        f"Time to process chunks using {os.cpu_count()} cpu cores: {end_time - result_time}"
-    )
+        results = Parallel(n_jobs=-1)(
+            delayed(chunk_processor)(folder_name, i, chunk, service=subscription)
+            for i, chunk in enumerate(chunks)
+        )
+        end_time = time.time()
+        print(
+            f"Time to process chunks using {os.cpu_count()} cpu cores: {end_time - result_time}"
+        )
+
+        whole_text = "".join(results)
+        whole_text = whole_text.replace("\n", " ")
+        episode[f"{subscription}_transcript"] = whole_text
 
     shutil.rmtree(folder_name)
-
-    whole_text = "".join(results)
-    whole_text = whole_text.replace("\n", " ")
-    episode["transcript"] = whole_text
     _time = end_time - start_time
     print(f"Time taken to transcribe the audio file: {_time}")
     try:
@@ -75,7 +75,7 @@ def get_large_audio_transcription(path, **episode):
     os.remove(f"{path.name}")
 
 
-def chunk_processor(folder_name, i, audio_chunk):
+def chunk_processor(folder_name, i, audio_chunk, service="google"):
     # export audio chunk and save it in
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
     print(f"exporting {chunk_filename}")
@@ -85,7 +85,9 @@ def chunk_processor(folder_name, i, audio_chunk):
     speed = 1.00
     translation = None
     while not translation:
-        translation = recursive_translation(chunk_filename, speed)
+        translation = recursive_translation(
+            chunk_filename, speed=speed, service=service
+        )
         print(f"Trying at {speed}x speed")
         speed -= 0.05
         if speed < 0.85:  # not seeing improvements anecdotally below this threshold
@@ -93,24 +95,28 @@ def chunk_processor(folder_name, i, audio_chunk):
     return translation
 
 
-def recursive_translation(chunk_filename, speed=None):
+def recursive_translation(chunk_filename, service="google", speed=None):
     """
     Recursively apply speech recognition on the audio file
     """
     try:
-        return translation_context(chunk_filename, speed)
+        return translation_context(chunk_filename, speed, service)
     except Exception:
         return None
 
 
-def audio_to_text(audio_listened, speed=None):
-    text = recognizer.recognize_google(audio_listened)
+def audio_to_text(audio_listened, service="google", speed=None):
+    wit_ai_key = os.getenv("WIT_AI_KEY")
+
+    if service == "google":
+        text = recognizer.recognize_google(audio_listened)
+    elif service == "wit_ai" and wit_ai_key:
+        text = recognizer.recognize_wit(audio_listened, key=wit_ai_key)
     if speed != 1.0:
         text += f" (translated at {speed}x speed)"
 
     punctuation = "?" if text[:3] in ["who", "wha", "whe", "why", "how"] else "."
-    if " " not in text:
-        punctuation = "!"
+
     return f"{text.capitalize()}{punctuation} "
 
 
@@ -137,9 +143,13 @@ def speed_change(_file, speed=1.0):
     return sound_with_altered_frame_rate.set_frame_rate(sound.frame_rate)
 
 
-def translation_context(chunk_filename, speed=None):
+def translation_context(
+    chunk_filename,
+    service="google",
+    speed=None,
+):
     with sr.AudioFile(chunk_filename) as source:
         audio_listened = recognizer.record(source)
         # try converting it to text
 
-        return audio_to_text(audio_listened, speed)
+        return audio_to_text(audio_listened, speed, service)
