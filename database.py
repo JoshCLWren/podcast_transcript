@@ -79,11 +79,12 @@ async def update_transcript(**transcript_data):
             await cur.execute(
                 """
                 UPDATE transcripts SET
+                id = %(id)s,
                 title = %(title)s,
                 transcript = %(transcript)s,
                 audio_url = %(audio_url)s,
                 media_type = %(media_type)s,
-                update_at = NOW()
+                updated_at = NOW()
                 WHERE id = %(id)s RETURNING *;
                 """,
                 transcript_data,

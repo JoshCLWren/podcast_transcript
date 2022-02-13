@@ -9,7 +9,7 @@ import re
 
 def wav_converter(url, title, format="mp3"):
     """
-    Converts an audio file to a mono wav file.
+    Converts an audio file to a mono wav file and normalizes it.
     """
     start_time = time.time()
     folder_name = f"{title}"

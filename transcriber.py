@@ -1,6 +1,7 @@
 # importing libraries
 # from https://www.thepythoncode.com/article/using-speech-recognition-to-convert-speech-to-text-python
 
+from numpy import rec
 import speech_recognition as sr
 import os
 from pydub import AudioSegment
@@ -9,14 +10,13 @@ import shutil
 import database
 from joblib import Parallel, delayed
 import time
-from rq import Queue
-from worker import conn
 import asyncio
 import os
+from pydub import AudioSegment
 
 # create a speech recognition object
-r = sr.Recognizer()
-q = Queue(connection=conn)
+recognizer = sr.Recognizer()
+
 # a function that splits the audio file into chunks
 # and applies speech recognition
 def get_large_audio_transcription(path, **episode):
@@ -77,25 +77,38 @@ def get_large_audio_transcription(path, **episode):
 
 def chunk_processor(folder_name, i, audio_chunk):
     # export audio chunk and save it in
-    # the `folder_name` directory.
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
     print(f"exporting {chunk_filename}")
     audio_chunk.export(chunk_filename, format="wav")
     print("Applying speech recognition on chunk")
     # recognize the chunk
-    with sr.AudioFile(chunk_filename) as source:
-        audio_listened = r.record(source)
-        # try converting it to text
+    try:
+        return translation_context(chunk_filename)
+    except Exception:
+        _extracted_from_chunk_processor(chunk_filename, 0.98)
         try:
-            text = r.recognize_google(audio_listened)
-            print(text)
-            return f"{text.capitalize()}. \n"
-        except sr.UnknownValueError as e:
-            error_text = f"chunk{i} unintelligible... error: {e}"
-            print(error_text)
-            return error_text
-        except sr.RequestError as e:
-            return "API unavailable for this chunk."
+            return translation_context(chunk_filename, speed=0.98)
+        except Exception:
+            _extracted_from_chunk_processor(chunk_filename, 0.95)
+            try:
+                return translation_context(chunk_filename, speed=0.95)
+            except Exception:
+                return "--"
+
+
+# TODO Rename this here and in `chunk_processor`
+def _extracted_from_chunk_processor(chunk_filename, arg2):
+    audio_chunk = speed_change(chunk_filename, arg2)
+    audio_chunk.export(chunk_filename, format="wav")
+
+
+# TODO Rename this here and in `chunk_processor`
+def audio_to_text(audio_listened, speed=None):
+    text = recognizer.recognize_google(audio_listened)
+    if speed:
+        text += f" (translated at {speed}x speed)"
+    print(text)
+    return f"{text.capitalize()}. \n"
 
 
 async def _insert_into_db(**episode):
@@ -103,4 +116,27 @@ async def _insert_into_db(**episode):
     Inserting the episode into the database
     """
     print("Inserting into database")
-    return await database.insert_transcript(**episode)
+    return await database.update_transcript(**episode)
+
+
+def speed_change(_file, speed=1.0):
+    # Manually override the frame_rate. This tells the computer how many
+    # samples to play per second
+    sound = AudioSegment.from_file(_file, format="wav")
+
+    sound_with_altered_frame_rate = sound._spawn(
+        sound.raw_data, overrides={"frame_rate": int(sound.frame_rate * speed)}
+    )
+
+    # convert the sound with altered frame rate to a standard frame rate
+    # so that regular playback programs will work right. They often only
+    # know how to play audio at standard frame rate (like 44.1k)
+    return sound_with_altered_frame_rate.set_frame_rate(sound.frame_rate)
+
+
+def translation_context(chunk_filename, speed=None):
+    with sr.AudioFile(chunk_filename) as source:
+        audio_listened = recognizer.record(source)
+        # try converting it to text
+
+        return audio_to_text(audio_listened, speed)

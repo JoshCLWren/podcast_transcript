@@ -4,6 +4,7 @@ import audio_jobs
 import os
 from rq import Queue
 from worker import conn
+import pytube
 
 q = Queue(connection=conn)
 api_key = os.environ.get("API_KEY")
@@ -35,14 +36,30 @@ async def create_transcript(request):
     if request.headers.get("api-key") != api_key:
         raise web.HTTPUnauthorized()
     try:
+
         body = await request.json()
+        body["title"] = "placeholder title"
+        body["transcript"] = "placeholder transcript"
+        transcript = await database.insert_transcript(**body)
+        body["id"] = transcript["id"]
+        if body["media_type"] == "podcast":
+            transcript_job = q.enqueue(
+                audio_jobs.episode_transcriber,
+                **body,
+            )
+        elif body["media_type"] == "youtube":
+            transcript_job = q.enqueue(
+                audio_jobs.video_transcriber,
+                **body,
+            )
 
-        transcript_job = q.enqueue(
-            audio_jobs.episode_transcriber,
-            **body,
+        return web.json_response(
+            {
+                "status": "success",
+                "job_id": transcript_job.id,
+                "transcript_id": transcript,
+            }
         )
-
-        return web.json_response({"status": "success", "job id": transcript_job.id})
 
     except Exception as e:
 
@@ -162,19 +179,3 @@ async def seed_transcript(request):
         return web.json_response(
             {"status": "failure", "error": str(e), "type": f"{type(e)}"}
         )
-
-
-async def transcribe_video(request):
-    """Transcribe a video from a youtube url"""
-    if request.headers.get("api-key") != api_key:
-        raise web.HTTPUnauthorized()
-    body = await request.json()
-    try:
-        transcript_job = q.enqueue(
-            audio_jobs.video_transcriber,
-            body["url"],
-        )
-
-        return web.json_response({"status": "success", "job id": transcript_job.id})
-    except:
-        return web.json_response({"status": "failure", "error": "job not found"})
