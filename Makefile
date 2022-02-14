@@ -10,11 +10,18 @@ deps-install:
 	python -m pip install --upgrade pip
 	pip install --upgrade -r requirements.txt
 
-compile:
-	pip freeze > requirements.txt
-
 server:
 	watchmedo auto-restart -p "*.py" -R python -- app.py
 
 heroku:
 	heroku local
+
+deps-compile:
+	pip install --upgrade pip-tools
+	pip-compile requirements.in
+
+deps-update:
+	python -m pip install --upgrade pip
+	pip install --upgrade pip-tools
+	pip-compile requirements.in
+	pip install --upgrade -r requirements.txt

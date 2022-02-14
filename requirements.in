@@ -1,0 +1,18 @@
+aiohttp
+aiohttp-middlewares
+aiopg
+arrow
+black
+feedparser
+ffmpeg
+joblib
+numpy
+pdbpp
+pip-tools
+psycopg2
+-e git+https://github.com/JoshCLWren/pytube@5186efa51e9fe7e9f9b63b99d8501bbe148287e3#egg=pytube
+PyYAML
+rq==0.12.0
+SpeechRecognition
+Watchdog
+pydub
