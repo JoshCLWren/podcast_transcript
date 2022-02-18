@@ -182,3 +182,14 @@ async def seed_transcript(request):
         return web.json_response(
             {"status": "failure", "error": str(e), "type": f"{type(e)}"}
         )
+
+
+def html_response(document):
+    """Returns a html response"""
+    s = open(document, "r")
+    return web.Response(text=s.read(), content_type="text/html")
+
+
+async def documentation(request):
+    """Serves the documentation"""
+    return html_response("./documentation/index.html")
