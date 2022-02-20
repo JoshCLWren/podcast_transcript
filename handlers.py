@@ -1,24 +1,27 @@
+from json import JSONDecodeError
+
 import database
 from aiohttp import web
 import audio_jobs
 import os
 from rq import Queue
 from worker import conn
-import pytube
+import translate
 
 q = Queue(connection=conn)
 api_key = os.environ.get("API_KEY")
+admin_key = os.environ.get("ADMIN_KEY")
 
 
-async def index(_request):
-    """Heroku needs an index route, I added this to make it easier to test and initiate table creation as well."""
-    try:
-        await database.create_transcript_table()
-        return web.json_response({"status": "success"})
-    except Exception as e:
-        return web.json_response(
-            {"status": "failure", "error": str(e), "type": f"{type(e)}"}
-        )
+# async def index(_request):
+#     """Heroku needs an index route, I added this to make it easier to test and initiate table creation as well."""
+#     try:
+#         await database.create_transcript_table()
+#         return web.json_response({"status": "success"})
+#     except Exception as e:
+#         return web.json_response(
+#             {"status": "failure", "error": str(e), "type": f"{type(e)}"}
+#         )
 
 
 async def get_transcripts(_request):
@@ -34,23 +37,27 @@ async def get_transcripts(_request):
 async def create_transcript(request):
     """Create a new transcript"""
     if request.headers.get("api-key") != api_key:
-        raise web.HTTPUnauthorized()
+        raise web.HTTPUnauthorized(reason="Invalid API key")
     try:
 
         body = await request.json()
         body["title"] = "placeholder title"
         body["redis_status"] = "pending"
         body["redis_job"] = "pending"
+        body["language"] = request.rel_url.query.get("language", "en-us")
+        print(f"the language is {body['language']}")
         transcript = await database.insert_transcript(**body)
         body["id"] = transcript["id"]
         if body["media_type"] == "podcast":
             transcript_job = q.enqueue(
                 audio_jobs.episode_transcriber,
+                timeout=3600,
                 **body,
             )
         elif body["media_type"] == "youtube":
             transcript_job = q.enqueue(
                 audio_jobs.video_transcriber,
+                timeout=3600,
                 **body,
             )
         body["redis_job"] = transcript_job.id
@@ -95,7 +102,7 @@ async def create_feed_transcript(request):
 
 async def delete_transcript(request):
     """Delete a transcript"""
-    if request.headers.get("api-key") != api_key:
+    if request.headers.get("admin-key") != admin_key:
         raise web.HTTPUnauthorized()
     _id = request.match_info["id"]
     await database.delete_transcript(_id)
@@ -104,7 +111,7 @@ async def delete_transcript(request):
 
 async def update_transcript(request):
     """Update a transcript"""
-    if request.headers.get("api-key") != api_key:
+    if request.headers.get("admin-key") != admin_key:
         raise web.HTTPUnauthorized()
     try:
         _id = request.match_info["id"]
@@ -134,7 +141,7 @@ async def get_transcript_resource(request):
 async def create_transcript_table(request):
     """Database table creation"""
 
-    if request.headers.get("api-key") != api_key:
+    if request.headers.get("admin-key") != admin_key:
         raise web.HTTPUnauthorized()
     try:
         await database.create_transcript_table()
@@ -148,7 +155,7 @@ async def create_transcript_table(request):
 async def drop_transcript_table(request):
     """Database table deletion"""
 
-    if request.headers.get("api-key") != api_key:
+    if request.headers.get("admin-key") != admin_key:
         raise web.HTTPUnauthorized()
     try:
         await database.drop_transcript_table()
@@ -161,7 +168,7 @@ async def drop_transcript_table(request):
 
 async def seed_transcript(request):
     """Seeds the table with fake transcript info"""
-    if request.headers.get("api-key") != api_key:
+    if request.headers.get("admin-key") != admin_key:
         raise web.HTTPUnauthorized()
     body = await request.json()
     try:
@@ -185,11 +192,38 @@ async def seed_transcript(request):
 
 
 def html_response(document):
-    """Returns a html response"""
+    """Returns an html response"""
     s = open(document, "r")
     return web.Response(text=s.read(), content_type="text/html")
 
 
-async def documentation(request):
-    """Serves the documentation"""
+async def documentation(_request):
+    """Serves the documentation page"""
+
     return html_response("./documentation/index.html")
+
+
+async def translate_transcript(request):
+    """Translates a transcript to the target language"""
+    _id = request.match_info["id"]
+    try:
+        body = await request.json()
+    except JSONDecodeError as e:
+        raise web.HTTPBadRequest(resaon="Invalid JSON") from e
+    try:
+        transcript = await database.get_transcript_resource(_id)
+        if transcript is None:
+            raise web.HTTPNotFound()
+
+        translated_transcript = translate.translate_transcript(
+            transcript["google_transcript"],
+            body["target_language"],
+        )
+
+        return web.json_response(
+            {"status": "success", "transcript": translated_transcript}
+        )
+    except Exception as e:
+        return web.json_response(
+            {"status": "failure", "error": str(e), "type": f"{type(e)}"}
+        )

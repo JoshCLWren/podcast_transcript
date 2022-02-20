@@ -18,7 +18,7 @@ recognizer = sr.Recognizer()
 
 # a function that splits the audio file into chunks
 # and applies speech recognition
-def get_large_audio_transcription(path, **episode):
+def get_large_audio_transcription(path, language="en-us", **episode):
     """
     Splitting the large audio file into chunks
     and apply speech recognition on each of these chunks
@@ -52,7 +52,7 @@ def get_large_audio_transcription(path, **episode):
         result_time = time.time()
 
         results = Parallel(n_jobs=-1)(
-            delayed(chunk_processor)(folder_name, i, chunk, service=subscription)
+            delayed(chunk_processor)(folder_name, i, chunk, service=subscription, language=language)
             for i, chunk in enumerate(chunks)
         )
         end_time = time.time()
@@ -104,7 +104,7 @@ def _log_error(path, whole_text, e):
         f.write(whole_text)
 
 
-def chunk_processor(folder_name, i, audio_chunk, service="google"):
+def chunk_processor(folder_name, i, audio_chunk, service="google", language="en-US"):
     """Process each chunk and apply speech recognition"""
     # export audio chunk and save it in
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
@@ -116,7 +116,7 @@ def chunk_processor(folder_name, i, audio_chunk, service="google"):
     translation = None
     while not translation:
         translation = recursive_translation(
-            chunk_filename, speed=speed, service=service
+            chunk_filename, speed=speed, service=service, language=language
         )
         print(f"Trying at {speed}x speed")
         speed -= 0.05
@@ -125,23 +125,25 @@ def chunk_processor(folder_name, i, audio_chunk, service="google"):
     return translation
 
 
-def recursive_translation(chunk_filename, service="google", speed=None):
+def recursive_translation(chunk_filename, service="google", speed=None, language="en-US"):
     """
     Recursively apply speech recognition on the audio file
     """
     try:
-        return translation_context(chunk_filename, speed, service)
+        return translation_context(chunk_filename, speed, service, language)
     except Exception:
         return None
 
 
-def audio_to_text(audio_listened, service="google", speed=None):
+def audio_to_text(audio_listened, service="google", speed=None, language="en-US"):
     """Convert audio to text using wit or google"""
     wit_ai_key = os.getenv("WIT_AI_KEY")
 
     if service == "google":
-        text = recognizer.recognize_google(audio_listened)
+        text = recognizer.recognize_google(audio_listened, language=language)
     elif service == "wit_ai" and wit_ai_key:
+        if language != "en-US":
+            return "sorry, wit_ai can only translate english"
         text = recognizer.recognize_wit(audio_listened, key=wit_ai_key)
     if speed != 1.0:
         text += f" (translated at {speed}x speed)"
@@ -183,6 +185,7 @@ def translation_context(
     chunk_filename,
     service="google",
     speed=None,
+    language="en-US",
 ):
     """A context manager for applying speech recognition"""
 
@@ -190,4 +193,4 @@ def translation_context(
         audio_listened = recognizer.record(source)
         # try converting it to text
 
-        return audio_to_text(audio_listened, speed, service)
+        return audio_to_text(audio_listened, speed, service, language)

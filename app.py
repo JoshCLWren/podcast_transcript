@@ -6,13 +6,13 @@ from aiohttp_middlewares import cors_middleware
 from handlers import *
 
 
-cors_rules = cors_middleware(origins=[re.compile(r"(localhost(:[\d]+))?")])
-middlewares = [cors_rules]
-app = web.Application(middlewares=middlewares)
+# cors_rules = cors_middleware(origins=[re.compile(r"(localhost(:[\d]+))?")])
+# middlewares = [cors_rules]
+app = web.Application()
 
 app.add_routes(
     [
-        web.get("/", index),
+        web.get("/", documentation),
         web.post("/transcripts/-/feed", create_feed_transcript),
         web.get("/transcripts", get_transcripts),
         web.post("/transcripts", create_transcript),
@@ -23,6 +23,7 @@ app.add_routes(
         web.delete("/transcripts:drop_table", drop_transcript_table),
         web.post("/transcripts:seed", seed_transcript),
         web.get("/documentation", documentation),
+        web.get("/translate/{id}", translate_transcript),
     ]
 )
 
