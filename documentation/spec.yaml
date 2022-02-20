@@ -1,0 +1,108 @@
+openapi: 3.0.1
+info:
+  title: Trnscrptr
+  description: an api that can transcribe audio podcasts or youtube videos to text
+  version: '0.2'
+servers:
+  - url: https://audioconvert.herokuapp.com
+paths:
+  /transcripts:
+    get:
+      description: Collection Get for all Transcripts
+      responses:
+        '200':
+          description: returns a collection of every transcription available
+      servers:
+        - url: https://audioconvert.herokuapp.com
+    post:
+      description: Add your own transcription of a podcast/video
+      parameters:
+        - name: api-key
+          in: header
+          schema:
+            type: string
+          example: TEST_KEY
+        - name: language
+          in: query
+          schema:
+            type: string
+          example: en-us
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                media_type:
+                  type: string
+                  example: podcast
+                audio_url:
+                  type: string
+                  example: "https://traffic.libsyn.com/secure/5minutehistory/The_History_of_London.mp3"
+                title:
+                  type: string
+                  example: The History of London
+            examples:
+              '0':
+                value: "{\n\t\"audio_url\": \"https://wwwutube.com/watch?v=ZXsQAXx_ao0\",\n\t\"media_type\": \"youtube\"\n}"
+      responses:
+        '200':
+          description: Returns the job id and status and the transcript_id which can be used to retrieve the resource
+          content:
+            application/json; charset=utf-8:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    example: "5e9f8f9f-f8b9-4f7b-b8e0-f8b9f8f7f8b9"
+                  status:
+                    type: string
+                    example: "in progress"
+                  transcript_id:
+                    type: string
+                    example: 1
+      servers:
+        - url: https://audioconvert.herokuapp.com
+    servers:
+      - url: https://audioconvert.herokuapp.com
+  /transcripts/{transcript_id}:
+    parameters:
+      - name: transcript_id
+        in: path
+        required: true
+        schema:
+          type: string
+          example: 1
+    get:
+      description: Retrieve the transcript of your podcast or video via transcript id
+      responses:
+        '200':
+          description: successful retrieval of a transcription resource
+      servers:
+        - url: https://audioconvert.herokuapp.com
+    servers:
+      - url: https://audioconvert.herokuapp.com
+  /translate/{transcript_id}:
+    parameters:
+      - name: transcript_id
+        in: path
+        required: true
+        schema:
+          type: string
+          example: 1
+      - name: language
+        in: query
+        required: true
+        schema:
+          type: string
+          example: english
+    get:
+      description: Retrieve the translated google transcription of a transcript resource in the desired target language passed as a query parameter
+      responses:
+        '200':
+          description: success
+      servers:
+        - url: https://audioconvert.herokuapp.com
+    servers:
+      - url: https://audioconvert.herokuapp.com

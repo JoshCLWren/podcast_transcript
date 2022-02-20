@@ -206,18 +206,15 @@ async def documentation(_request):
 async def translate_transcript(request):
     """Translates a transcript to the target language"""
     _id = request.match_info["id"]
-    try:
-        body = await request.json()
-    except JSONDecodeError as e:
-        raise web.HTTPBadRequest(resaon="Invalid JSON") from e
+    language = request.rel_url.query["language"]
     try:
         transcript = await database.get_transcript_resource(_id)
         if transcript is None:
-            raise web.HTTPNotFound()
+            raise web.HTTPNotFound(reason="transcript not found")
 
         translated_transcript = translate.translate_transcript(
             transcript["google_transcript"],
-            body["target_language"],
+            language,
         )
 
         return web.json_response(
