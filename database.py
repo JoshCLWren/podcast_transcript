@@ -1,6 +1,8 @@
 import os
+
 import aiopg
 import psycopg2.extras
+
 from datetime_schema import trans_dates_to_string
 
 dsn = "dbname=aiopg user=postgres"
@@ -106,7 +108,7 @@ async def update_transcript(**transcript_data):
         async with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
 
             if "id" not in transcript_data:
-                return await insert_transcript(**transcript_input)
+                return await insert_transcript(**transcript_data)
 
             transcript_input = _normalize_columns(transcript_data)
 

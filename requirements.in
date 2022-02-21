@@ -17,3 +17,5 @@ SpeechRecognition
 Watchdog
 pydub
 googletrans==3.1.0a0
+pytest
+pytest-aiohttp

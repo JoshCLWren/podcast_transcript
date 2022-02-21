@@ -1,12 +1,12 @@
-from json import JSONDecodeError
-
-import database
-from aiohttp import web
-import audio_jobs
 import os
+
+from aiohttp import web
 from rq import Queue
-from worker import conn
+
+import audio_jobs
+import database
 import translate
+from worker import conn
 
 q = Queue(connection=conn)
 api_key = os.environ.get("API_KEY")
@@ -36,46 +36,46 @@ async def get_transcripts(_request):
 
 async def create_transcript(request):
     """Create a new transcript"""
+
     if request.headers.get("api-key") != api_key:
         raise web.HTTPUnauthorized(reason="Invalid API key")
-    try:
 
-        body = await request.json()
-        body["title"] = "placeholder title"
-        body["redis_status"] = "pending"
-        body["redis_job"] = "pending"
-        body["language"] = request.rel_url.query.get("language", "en-us")
-        print(f"the language is {body['language']}")
-        transcript = await database.insert_transcript(**body)
-        body["id"] = transcript["id"]
-        if body["media_type"] == "podcast":
-            transcript_job = q.enqueue(
-                audio_jobs.episode_transcriber,
-                timeout=3600,
-                **body,
-            )
-        elif body["media_type"] == "youtube":
-            transcript_job = q.enqueue(
-                audio_jobs.video_transcriber,
-                timeout=3600,
-                **body,
-            )
-        body["redis_job"] = transcript_job.id
-        body["redis_status"] = "started"
-        transcript = await database.update_transcript(**body)
-        return web.json_response(
-            {
-                "status": "success",
-                "job_id": transcript_job.id,
-                "transcript_id": transcript["id"],
-            }
+    body = await request.json()
+    body["title"] = "placeholder title"
+    body["redis_status"] = "pending"
+    body["redis_job"] = "pending"
+    transcript = await database.insert_transcript(**body)
+    body["id"] = transcript["id"]
+
+    if body["media_type"] == "podcast":
+        transcript_job = q.enqueue(
+            audio_jobs.episode_transcriber,
+            timeout=3600,
+            **body,
         )
-
-    except Exception as e:
-
-        return web.json_response(
-            {"status": "failure", "error": str(e), "type": f"{type(e)}"}
+        job_id = transcript_job.id
+        status = "started"
+    elif body["media_type"] == "youtube":
+        transcript_job = q.enqueue(
+            audio_jobs.video_transcriber,
+            timeout=3600,
+            **body,
         )
+        job_id = transcript_job.id
+        status = "started"
+    else:
+        status = "failed"
+        job_id = None
+
+    transcript = await database.update_transcript(**body)
+
+    return web.json_response(
+        {
+            "status": status,
+            "job_id": job_id,
+            "transcript_id": transcript["id"],
+        }
+    )
 
 
 async def create_feed_transcript(request):
@@ -90,8 +90,10 @@ async def create_feed_transcript(request):
 
             return web.json_response({"status": "success", "job id": transcript_job.id})
 
-        except:
-            return web.json_response({"status": "failure", "error": "job not found"})
+        except Exception as e:
+            return web.json_response(
+                {"status": "failure", "error": f"job not found {e}"}
+            )
 
     except Exception as e:
 
@@ -174,7 +176,7 @@ async def seed_transcript(request):
     try:
         for _ in range(body["transcript_count"]):
             fake_transcript = {
-                "title": "Fake titlke",
+                "title": "Fake title",
                 "transcript": "Fake transcript",
                 "audio_url": "https://fake.com",
                 "media_type": "fake_audio",

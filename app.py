@@ -1,30 +1,15 @@
-import re
-from aiohttp import web
+"""Create and run the AIOHTTP server."""
 import os
-from aiohttp_middlewares import cors_middleware
 
-from handlers import *
+from aiohttp import web
 
 
-# cors_rules = cors_middleware(origins=[re.compile(r"(localhost(:[\d]+))?")])
-# middlewares = [cors_rules]
-app = web.Application()
+def get_app():
+    app_instance = web.Application()
+    from routes import endpoints
 
-app.add_routes(
-    [
-        web.get("/", documentation),
-        web.post("/transcripts/-/feed", create_feed_transcript),
-        web.get("/transcripts", get_transcripts),
-        web.post("/transcripts", create_transcript),
-        web.delete("/transcripts/{id}", delete_transcript),
-        web.put("/transcripts/{id}", update_transcript),
-        web.get("/transcripts/{id}", get_transcript_resource),
-        web.post("/transcripts:create_table", create_transcript_table),
-        web.delete("/transcripts:drop_table", drop_transcript_table),
-        web.post("/transcripts:seed", seed_transcript),
-        web.get("/documentation", documentation),
-        web.get("/translate/{id}", translate_transcript),
-    ]
-)
+    app_instance.add_routes(endpoints())
+    web.run_app(app_instance, port=os.getenv("PORT", 8080))
 
-web.run_app(app, port=os.getenv("PORT", 8080))
+
+get_app()

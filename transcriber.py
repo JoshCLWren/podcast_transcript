@@ -1,24 +1,32 @@
-# importing libraries
-# from https://www.thepythoncode.com/article/using-speech-recognition-to-convert-speech-to-text-python
-
-from numpy import rec
-import speech_recognition as sr
-import os
-from pydub import AudioSegment
-from pydub.silence import split_on_silence
-import shutil
-import database
-from joblib import Parallel, delayed
-import time
 import asyncio
 import os
+import shutil
+import time
 
-# create a speech recognition object
+import speech_recognition as sr
+from joblib import Parallel, delayed
+from pydub import AudioSegment
+from pydub.silence import split_on_silence
+
+import database
+import translate
+
+ENGLISH_DIALECTS = [
+    "en-us",
+    "en-gb",
+    "en-au",
+    "en-ca",
+    "en-nz",
+    "en-in",
+    "english",
+]
+
 recognizer = sr.Recognizer()
 
-# a function that splits the audio file into chunks
-# and applies speech recognition
-def get_large_audio_transcription(path, language="en-us", **episode):
+
+def get_large_audio_transcription(
+    path, source_language="en-us", target_language="en-us", **episode
+):
     """
     Splitting the large audio file into chunks
     and apply speech recognition on each of these chunks
@@ -27,7 +35,6 @@ def get_large_audio_transcription(path, language="en-us", **episode):
     # open the audio file using pydub
     start_time = time.time()
     sound = AudioSegment.from_wav(path)
-    print("Splitting audio file into chunks")
     # split audio sound where silence is 500 milliseconds or more and get chunks
 
     if os.environ.get("KEEP_SILENCE") == "True":
@@ -45,35 +52,49 @@ def get_large_audio_transcription(path, language="en-us", **episode):
         keep_silence=silence_value,
     )
 
-    print("Applying speech recognition on each chunk")
     folder_name = _setup(path)
     # process each chunk
-    for subscription in ["google", "wit_ai"]:
-        result_time = time.time()
+    subscriptions = ["wit_ai", "google"]
+    if source_language.lower() not in ENGLISH_DIALECTS:
+        subscriptions = subscriptions.pop("google")
 
+    for subscription in subscriptions:
         results = Parallel(n_jobs=-1)(
-            delayed(chunk_processor)(folder_name, i, chunk, service=subscription, language=language)
+            delayed(chunk_processor)(
+                folder_name,
+                i,
+                chunk,
+                service=subscription,
+                source_language=source_language,
+                target_language=target_language,
+            )
             for i, chunk in enumerate(chunks)
-        )
-        end_time = time.time()
-        print(
-            f"Time to process chunks using {os.cpu_count()} cpu cores: {end_time - result_time}"
         )
 
         whole_text = "".join(results)
         whole_text = whole_text.replace("\n", " ")
+        # if target_language != source_language and subscription == "google":
+        #     disclaimer = f"<Translated to {target_language}>... "
+        #     translated_transcript = translate.translate_transcript(
+        #         text=whole_text,
+        #         target_language=target_language,
+        #         source_language=source_language,
+        #     )
+        #     whole_text = disclaimer + translated_transcript
+
         episode[f"{subscription}_transcript"] = whole_text
-    episode["redis_job"] = None
+        episode["redis_status"] = "partial success"
+        asyncio.run(_insert_into_db(**episode))
 
-    _time = end_time - start_time
-    print(f"Time taken to transcribe the audio file: {_time}")
-
+    episode["redis_status"] = "finished"
     try:
         asyncio.run(_insert_into_db(**episode))
-    except Exception as e:
-        _log_error(path, whole_text, e)
 
-    _teardown(path, folder_name)
+        _teardown(path, folder_name)
+    except Exception as e:
+        _log_error(path, **episode, error=e)
+
+        _teardown(path, folder_name)
 
 
 def _teardown(path, folder_name):
@@ -92,7 +113,7 @@ def _setup(path):
     return folder_name
 
 
-def _log_error(path, whole_text, e):
+def _log_error(path, e, **episode):
     """In the event of an error, log the error and the transcript to a txt file"""
     print("task failed")
     print(e)
@@ -101,62 +122,114 @@ def _log_error(path, whole_text, e):
     with open(f"error_logs/{path}.txt", "w") as f:
         f.write("task failed")
         f.write(str(e))
-        f.write(whole_text)
+        f.write(str(episode))
 
 
-def chunk_processor(folder_name, i, audio_chunk, service="google", language="en-US"):
+def chunk_processor(
+    folder_name,
+    i,
+    audio_chunk,
+    service,
+    source_language="en-US",
+    target_language="en-US",
+):
     """Process each chunk and apply speech recognition"""
-    # export audio chunk and save it in
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
-    print(f"exporting {chunk_filename}")
     audio_chunk.export(chunk_filename, format="wav")
-    print("Applying speech recognition on chunk")
 
     speed = 1.00
-    translation = None
-    while not translation:
-        translation = recursive_translation(
-            chunk_filename, speed=speed, service=service, language=language
+
+    while speed > 0.85:
+        transcription = recursive_transcription(
+            chunk_filename=chunk_filename,
+            service=service,
+            speed=speed,
+            source_language=source_language,
+            target_language=target_language,
         )
-        print(f"Trying at {speed}x speed")
-        speed -= 0.05
-        if speed < 0.85:  # not seeing improvements anecdotally below this threshold
-            return ""
-    return translation
+        speed -= 0.01
+        if transcription:
+            return transcription
+    return ""
 
 
-def recursive_translation(chunk_filename, service="google", speed=None, language="en-US"):
+def recursive_transcription(
+    chunk_filename,
+    speed,
+    service,
+    source_language,
+    target_language,
+):
     """
     Recursively apply speech recognition on the audio file
     """
-    try:
-        return translation_context(chunk_filename, speed, service, language)
-    except Exception:
-        return None
+
+    if speed != 1.0:
+
+        audio_chunk = speed_change(chunk_filename, speed=speed)
+        audio_chunk.export(chunk_filename, format="wav")
+
+    with sr.AudioFile(chunk_filename) as source:
+        audio_listened = recognizer.record(source)
+        # try converting it to text
+        return audio_to_text(
+            audio_listened,
+            service=service,
+            source_language=source_language,
+            target_language=target_language,
+        )
 
 
-def audio_to_text(audio_listened, service="google", speed=None, language="en-US"):
+def audio_to_text(
+    audio_listened,
+    service,
+    source_language,
+    target_language,
+):
     """Convert audio to text using wit or google"""
-    wit_ai_key = os.getenv("WIT_AI_KEY")
 
     if service == "google":
-        text = recognizer.recognize_google(audio_listened, language=language)
-    elif service == "wit_ai" and wit_ai_key:
-        if language != "en-US":
-            return "sorry, wit_ai can only translate english"
-        text = recognizer.recognize_wit(audio_listened, key=wit_ai_key)
-    if speed != 1.0:
-        text += f" (translated at {speed}x speed)"
+        print("inside google")
+        print(f"languages are {source_language} and {target_language}")
+        try:
+            transcribed_text = recognizer.recognize_google(
+                audio_listened, language=source_language
+            )
+        except Exception as e:
+            print(f"error in google {e}")
+            return ""
+        print(f"line 198 transcribed_text: {transcribed_text}")
+        if target_language == source_language:
+            return _add_grammar(text=transcribed_text, language=source_language)
+        translation = translate.translate_transcript(
+            transcribed_text, source_language, target_language
+        )
+        print(f"line 204 translation: {translation}")
+        return _add_grammar(text=translation, language=target_language)
+    if service == "wit_ai" and source_language in ENGLISH_DIALECTS:
+        print("inside wit_ai")
+        try:
+            return _add_grammar(
+                recognizer.recognize_wit(
+                    audio_listened, key=os.environ.get("WIT_AI_KEY")
+                )
+            )
+        except Exception as e:
+            print(f"wit_ai error: {e}")
+            return ""
 
-    return _grammarize(text)
+    raise Exception("Invalid service")
 
 
-def _grammarize(text):
-    """Format the text to be somewhat grammatically correct."""
+def _add_grammar(text, language="en-US"):
+    """Format english text to be somewhat grammatically correct."""
 
-    punctuation = "?" if text[:3] in ["who", "wha", "whe", "why", "how"] else "."
-
-    return f"{text.capitalize()}{punctuation} "
+    if language.lower() in ENGLISH_DIALECTS:
+        punctuation = "?" if text[:3] in ["who", "wha", "whe", "why", "how"] else "."
+        print(f"line 226 punctuation: {punctuation}")
+        return f"{text.capitalize()}{punctuation} "
+    print(f"line 228 text: {text}")
+    return text
 
 
 async def _insert_into_db(**episode):
@@ -164,14 +237,12 @@ async def _insert_into_db(**episode):
     Inserting the episode into the database
     """
 
-    print("Inserting into database")
-    episode["redis_status"] = "done"
-    return await database.update_transcript(**episode)
+    await database.update_transcript(**episode)
 
 
 def speed_change(_file, speed=1.0):
     """Adjust the speed of the audio file"""
-
+    print("inside speed_change speed is", speed)
     sound = AudioSegment.from_file(_file, format="wav")
 
     sound_with_altered_frame_rate = sound._spawn(
@@ -179,18 +250,3 @@ def speed_change(_file, speed=1.0):
     )
 
     return sound_with_altered_frame_rate.set_frame_rate(sound.frame_rate)
-
-
-def translation_context(
-    chunk_filename,
-    service="google",
-    speed=None,
-    language="en-US",
-):
-    """A context manager for applying speech recognition"""
-
-    with sr.AudioFile(chunk_filename) as source:
-        audio_listened = recognizer.record(source)
-        # try converting it to text
-
-        return audio_to_text(audio_listened, speed, service, language)
