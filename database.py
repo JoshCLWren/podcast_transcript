@@ -74,7 +74,7 @@ async def get_transcripts():
 
     async with aiopg.connect(DATABASE_URL) as conn:
         async with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            await cur.execute("SELECT * FROM transcripts;")
+            await cur.execute("SELECT * FROM transcripts order by created_at desc;")
 
             trans = await cur.fetchall()
             for transcript in trans:

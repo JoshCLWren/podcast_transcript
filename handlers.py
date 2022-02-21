@@ -5,23 +5,12 @@ from rq import Queue
 
 import audio_jobs
 import database
-import translate
+from translation_service import translate_transcript
 from worker import conn
 
 q = Queue(connection=conn)
 api_key = os.environ.get("API_KEY")
 admin_key = os.environ.get("ADMIN_KEY")
-
-
-# async def index(_request):
-#     """Heroku needs an index route, I added this to make it easier to test and initiate table creation as well."""
-#     try:
-#         await database.create_transcript_table()
-#         return web.json_response({"status": "success"})
-#     except Exception as e:
-#         return web.json_response(
-#             {"status": "failure", "error": str(e), "type": f"{type(e)}"}
-#         )
 
 
 async def get_transcripts(_request):
@@ -67,13 +56,14 @@ async def create_transcript(request):
         status = "failed"
         job_id = None
 
-    transcript = await database.update_transcript(**body)
+    episode = await database.update_transcript(
+        **{"id": transcript["id"], "redis_job": job_id, "redis_status": status}
+    )
 
     return web.json_response(
         {
             "status": status,
-            "job_id": job_id,
-            "transcript_id": transcript["id"],
+            **episode,
         }
     )
 
@@ -205,18 +195,19 @@ async def documentation(_request):
     return html_response("./documentation/index.html")
 
 
-async def translate_transcript(request):
+async def change_language(request):
     """Translates a transcript to the target language"""
     _id = request.match_info["id"]
-    language = request.rel_url.query["language"]
+    target_language = request.rel_url.query["target_language"]
+
     try:
         transcript = await database.get_transcript_resource(_id)
         if transcript is None:
             raise web.HTTPNotFound(reason="transcript not found")
 
-        translated_transcript = translate.translate_transcript(
-            transcript["google_transcript"],
-            language,
+        translated_transcript = translate_transcript(
+            text=transcript["google_transcript"],
+            target_language=target_language,
         )
 
         return web.json_response(

@@ -9,7 +9,7 @@ from pydub import AudioSegment
 from pydub.silence import split_on_silence
 
 import database
-import translate
+from translation_service import translate_transcript
 
 ENGLISH_DIALECTS = [
     "en-us",
@@ -54,10 +54,10 @@ def get_large_audio_transcription(
 
     folder_name = _setup(path)
     # process each chunk
-    subscriptions = ["wit_ai", "google"]
-    if source_language.lower() not in ENGLISH_DIALECTS:
-        subscriptions = subscriptions.pop("google")
-
+    # subscriptions = ["wit_ai", "google"]
+    # if source_language.lower() not in ENGLISH_DIALECTS:
+    #     subscriptions = subscriptions.pop("google")
+    subscriptions = ["google"]  # wit_ai is not working for now
     for subscription in subscriptions:
         results = Parallel(n_jobs=-1)(
             delayed(chunk_processor)(
@@ -73,20 +73,13 @@ def get_large_audio_transcription(
 
         whole_text = "".join(results)
         whole_text = whole_text.replace("\n", " ")
-        # if target_language != source_language and subscription == "google":
-        #     disclaimer = f"<Translated to {target_language}>... "
-        #     translated_transcript = translate.translate_transcript(
-        #         text=whole_text,
-        #         target_language=target_language,
-        #         source_language=source_language,
-        #     )
-        #     whole_text = disclaimer + translated_transcript
 
         episode[f"{subscription}_transcript"] = whole_text
-        episode["redis_status"] = "partial success"
+        episode["redis_status"] = f"{subscription} success"
         asyncio.run(_insert_into_db(**episode))
 
     episode["redis_status"] = "finished"
+    episode["redis_job"] = "n/a"
     try:
         asyncio.run(_insert_into_db(**episode))
 
@@ -130,8 +123,8 @@ def chunk_processor(
     i,
     audio_chunk,
     service,
-    source_language="en-US",
-    target_language="en-US",
+    source_language,
+    target_language,
 ):
     """Process each chunk and apply speech recognition"""
     chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
@@ -165,19 +158,23 @@ def recursive_transcription(
     """
 
     if speed != 1.0:
-
+        print("*" * 10)
+        print(f"speed decreased to: {speed}")
         audio_chunk = speed_change(chunk_filename, speed=speed)
         audio_chunk.export(chunk_filename, format="wav")
 
     with sr.AudioFile(chunk_filename) as source:
         audio_listened = recognizer.record(source)
         # try converting it to text
-        return audio_to_text(
-            audio_listened,
-            service=service,
-            source_language=source_language,
-            target_language=target_language,
-        )
+        try:
+            return audio_to_text(
+                audio_listened,
+                service=service,
+                source_language=source_language,
+                target_language=target_language,
+            )
+        except Exception as e:
+            print(e)
 
 
 def audio_to_text(
@@ -189,8 +186,6 @@ def audio_to_text(
     """Convert audio to text using wit or google"""
 
     if service == "google":
-        print("inside google")
-        print(f"languages are {source_language} and {target_language}")
         try:
             transcribed_text = recognizer.recognize_google(
                 audio_listened, language=source_language
@@ -198,25 +193,38 @@ def audio_to_text(
         except Exception as e:
             print(f"error in google {e}")
             return ""
-        print(f"line 198 transcribed_text: {transcribed_text}")
-        if target_language == source_language:
-            return _add_grammar(text=transcribed_text, language=source_language)
-        translation = translate.translate_transcript(
-            transcribed_text, source_language, target_language
-        )
-        print(f"line 204 translation: {translation}")
-        return _add_grammar(text=translation, language=target_language)
+        if target_language != source_language and transcribed_text:
+
+            text = translate_transcript(
+                text=transcribed_text,
+                target_language=target_language,
+                source_language=source_language,
+            )
+
+            return _add_grammar(text=text, language=source_language)
+        else:
+            raise Exception("no text")
     if service == "wit_ai" and source_language in ENGLISH_DIALECTS:
-        print("inside wit_ai")
         try:
-            return _add_grammar(
+            wit_transcription = _add_grammar(
                 recognizer.recognize_wit(
                     audio_listened, key=os.environ.get("WIT_AI_KEY")
                 )
             )
         except Exception as e:
             print(f"wit_ai error: {e}")
+
             return ""
+
+        if (
+            source_language in ENGLISH_DIALECTS
+            and target_language not in ENGLISH_DIALECTS
+            and wit_transcription
+        ):
+            return translate_transcript(
+                text=wit_transcription, target_language=target_language
+            )
+        return wit_transcription
 
     raise Exception("Invalid service")
 
@@ -226,9 +234,7 @@ def _add_grammar(text, language="en-US"):
 
     if language.lower() in ENGLISH_DIALECTS:
         punctuation = "?" if text[:3] in ["who", "wha", "whe", "why", "how"] else "."
-        print(f"line 226 punctuation: {punctuation}")
         return f"{text.capitalize()}{punctuation} "
-    print(f"line 228 text: {text}")
     return text
 
 
@@ -242,7 +248,6 @@ async def _insert_into_db(**episode):
 
 def speed_change(_file, speed=1.0):
     """Adjust the speed of the audio file"""
-    print("inside speed_change speed is", speed)
     sound = AudioSegment.from_file(_file, format="wav")
 
     sound_with_altered_frame_rate = sound._spawn(

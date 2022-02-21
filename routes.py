@@ -18,5 +18,5 @@ def endpoints():
         web.delete("/transcripts:drop_table", drop_transcript_table),
         web.post("/transcripts:seed", seed_transcript),
         web.get("/documentation", documentation),
-        web.get("/translate/{id}", translate_transcript),
+        web.get("/translate/{id}", change_language),
     ]

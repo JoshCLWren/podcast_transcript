@@ -1,5 +1,4 @@
 import asyncio
-import time
 
 import feedparser
 from rq import Queue
@@ -14,7 +13,6 @@ q = Queue(connection=conn)
 
 def feed_transcriber(feed_url):
     """Transcribes an entire rss feed of a podcast."""
-    start_time = time.time()
     feed = feedparser.parse(feed_url)
 
     for item in feed.entries:
@@ -42,8 +40,6 @@ def feed_transcriber(feed_url):
             _handle_error(e, **episode)
 
             continue
-    end_time = time.time()
-    print(f"Time to transcribe feed: {end_time - start_time}")
 
 
 def episode_transcriber(**episode):

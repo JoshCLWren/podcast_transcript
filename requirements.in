@@ -6,7 +6,6 @@ black
 feedparser
 ffmpeg
 joblib
-numpy
 pdbpp
 pip-tools
 psycopg2
@@ -19,3 +18,4 @@ pydub
 googletrans==3.1.0a0
 pytest
 pytest-aiohttp
+translate

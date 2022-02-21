@@ -1,10 +1,7 @@
-import googletrans
-
-# init the Google API translator
-translator = googletrans.Translator()
+from translate import Translator
 
 
-def translate_transcript(text, target_language="en", source_language="auto"):
+def translate_transcript(text, target_language, source_language="auto"):
     """Translate text using Google Translate API.
 
     Args:
@@ -17,7 +14,8 @@ def translate_transcript(text, target_language="en", source_language="auto"):
     """
 
     # translate the text
-    translation = translator.translate(text, dest=target_language, src=source_language)
-
+    translator = Translator(to_lang=target_language, from_lang=source_language)
+    translation = translator.translate(text)
+    print(f"Translated text: {translation}")
     # return the translated text
-    return translation.text
+    return translation
