@@ -9,19 +9,19 @@ from worker import conn
 import translate
 
 q = Queue(connection=conn)
-api_key = os.environ.get("API_KEY")
-admin_key = os.environ.get("ADMIN_KEY")
+api_key = os.environ.get("API_KEY", "Test")
+admin_key = os.environ.get("ADMIN_KEY", "Test")
 
 
-# async def index(_request):
-#     """Heroku needs an index route, I added this to make it easier to test and initiate table creation as well."""
-#     try:
-#         await database.create_transcript_table()
-#         return web.json_response({"status": "success"})
-#     except Exception as e:
-#         return web.json_response(
-#             {"status": "failure", "error": str(e), "type": f"{type(e)}"}
-#         )
+async def index(_request):
+    """Heroku needs an index route, I added this to make it easier to test and initiate table creation as well."""
+    try:
+        await database.create_transcript_table()
+        return web.json_response({"status": "success"})
+    except Exception as e:
+        return web.json_response(
+            {"status": "failure", "error": str(e), "type": f"{type(e)}"}
+        )
 
 
 async def get_transcripts(_request):
@@ -41,13 +41,14 @@ async def create_transcript(request):
     try:
 
         body = await request.json()
-        body["title"] = "placeholder title"
+        if not body.get("title"):
+            body["title"] = "Untitled"
         body["redis_status"] = "pending"
         body["redis_job"] = "pending"
         body["language"] = request.rel_url.query.get("language", "en-us")
-        print(f"the language is {body['language']}")
         transcript = await database.insert_transcript(**body)
         body["id"] = transcript["id"]
+        transcript_job = None
         if body["media_type"] == "podcast":
             transcript_job = q.enqueue(
                 audio_jobs.episode_transcriber,
@@ -60,7 +61,7 @@ async def create_transcript(request):
                 timeout=3600,
                 **body,
             )
-        body["redis_job"] = transcript_job.id
+        body["redis_job"] = transcript_job.id if transcript_job else "pending"
         body["redis_status"] = "started"
         transcript = await database.update_transcript(**body)
         return web.json_response(

@@ -12,9 +12,11 @@ from joblib import Parallel, delayed
 import time
 import asyncio
 import os
+import re
 
 # create a speech recognition object
 recognizer = sr.Recognizer()
+
 
 # a function that splits the audio file into chunks
 # and applies speech recognition
@@ -30,10 +32,10 @@ def get_large_audio_transcription(path, language="en-us", **episode):
     print("Splitting audio file into chunks")
     # split audio sound where silence is 500 milliseconds or more and get chunks
 
-    if os.environ.get("KEEP_SILENCE") == "True":
+    if os.environ.get("KEEP_SILENCE", "True") == "True":
         silence_value = True
     else:
-        silence_value = int(os.environ.get("SILENCE_VALUE"))
+        silence_value = int(os.environ.get("SILENCE_VALUE", 500))
 
     chunks = split_on_silence(
         sound,
@@ -48,7 +50,7 @@ def get_large_audio_transcription(path, language="en-us", **episode):
     print("Applying speech recognition on each chunk")
     folder_name = _setup(path)
     # process each chunk
-    for subscription in ["google", "wit_ai"]:
+    for subscription in ["wit_ai"]:
         result_time = time.time()
 
         results = Parallel(n_jobs=-1)(
@@ -60,9 +62,20 @@ def get_large_audio_transcription(path, language="en-us", **episode):
             f"Time to process chunks using {os.cpu_count()} cpu cores: {end_time - result_time}"
         )
 
-        whole_text = "".join(results)
-        whole_text = whole_text.replace("\n", " ")
-        episode[f"{subscription}_transcript"] = whole_text
+        raw_text = "".join(results)
+        whole_text = raw_text.replace("\n", " ")
+        paragraphed_text = paragrapher(whole_text)
+        episode[f"{subscription}_transcript"] = paragraphed_text
+        # publish the transcript to a txt file in the transcripts folder
+        with open(f"transcripts/{episode['title']}.txt", "w") as f:
+            f.write(paragraphed_text)
+        # commit and push the text file to git
+        os.system(f"git add {episode['title']}.txt")
+        os.system(f"git commit -m '{episode['title']}'")
+        os.system("git push")
+
+
+
     episode["redis_job"] = None
 
     _time = end_time - start_time
@@ -74,6 +87,20 @@ def get_large_audio_transcription(path, language="en-us", **episode):
         _log_error(path, whole_text, e)
 
     _teardown(path, folder_name)
+
+
+def paragrapher(text):
+    """
+    make paragraphs out of the sentences in the text. Every three sentences
+    seperated by punctuagion are considered a paragraph. Split on ., !, ?
+    """
+    # capitalize an use of " i " or " i'" to make it grammatically correct
+    text = re.sub(r"(\s+i\s+|\s+i')", " I ", text)
+    sentences = text.split(". ")
+    paragraphs = [". ".join(sentences[i : i + 12]) for i in range(0, len(sentences), 12)]
+
+    # joint the paragraphs together
+    return "\n\n".join(paragraphs)
 
 
 def _teardown(path, folder_name):
@@ -137,14 +164,12 @@ def recursive_translation(chunk_filename, service="google", speed=None, language
 
 def audio_to_text(audio_listened, service="google", speed=None, language="en-US"):
     """Convert audio to text using wit or google"""
-    wit_ai_key = os.getenv("WIT_AI_KEY")
-
+    wit_ai_key = os.getenv("WIT_AI_KEY", "6Y76N33DSO3TAMDSHKFPGIRHNTDI33ZF")
+    text = None
     if service == "google":
         text = recognizer.recognize_google(audio_listened, language=language)
-    elif service == "wit_ai" and wit_ai_key:
-        if language != "en-US":
-            return "sorry, wit_ai can only translate english"
-        text = recognizer.recognize_wit(audio_listened, key=wit_ai_key)
+
+    text = recognizer.recognize_wit(audio_listened, key=wit_ai_key)
     if speed != 1.0:
         text += f" (translated at {speed}x speed)"
 
@@ -182,10 +207,10 @@ def speed_change(_file, speed=1.0):
 
 
 def translation_context(
-    chunk_filename,
-    service="google",
-    speed=None,
-    language="en-US",
+        chunk_filename,
+        service="google",
+        speed=None,
+        language="en-US",
 ):
     """A context manager for applying speech recognition"""
 

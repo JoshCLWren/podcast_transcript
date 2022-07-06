@@ -3,7 +3,7 @@ import urllib.parse as urlparse
 from redis import Redis
 from rq import Queue, Connection
 
-if os.environ.get("env") != "development" or os.environ.get("env") is False:
+if os.environ.get("env", "development") != "development" or os.environ.get("env") is False:
     from rq import Queue, Connection
     from rq.worker import HerokuWorker as Worker
 else:

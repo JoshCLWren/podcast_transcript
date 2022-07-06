@@ -5,7 +5,7 @@ from datetime_schema import trans_dates_to_string
 
 dsn = "dbname=aiopg user=postgres"
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgres://postgres:postgres@localhost:5431/postgres")
 
 TRANSCRIPT_COLUMNS = {
     "id": "bigserial PRIMARY KEY",

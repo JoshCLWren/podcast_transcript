@@ -46,7 +46,6 @@ def feed_transcriber(feed_url):
 
 def episode_transcriber(**episode):
     """Transcribes a single audio file."""
-
     try:
         wav_file = audio_conversion.wav_converter(
             episode["audio_url"], episode["title"]

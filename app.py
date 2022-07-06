@@ -12,7 +12,7 @@ app = web.Application()
 
 app.add_routes(
     [
-        web.get("/", documentation),
+        web.get("/", index),
         web.post("/transcripts/-/feed", create_feed_transcript),
         web.get("/transcripts", get_transcripts),
         web.post("/transcripts", create_transcript),
@@ -23,7 +23,6 @@ app.add_routes(
         web.delete("/transcripts:drop_table", drop_transcript_table),
         web.post("/transcripts:seed", seed_transcript),
         web.get("/documentation", documentation),
-        web.get("/translate/{id}", translate_transcript),
     ]
 )
 
